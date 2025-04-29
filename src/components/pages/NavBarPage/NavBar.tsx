@@ -39,10 +39,11 @@ const NavBarAlt: FC = () => {
 
   return (
     <aside className="w-60 h-screen fixed bg-white shadow-md flex flex-col">
-      <nav className="flex-1 overflow-y-auto py-10">
+      {/* Menu */}
+      <nav className="flex-1 overflow-y-auto py-4">
         {SECTIONS.map((sec) => (
           <div key={sec.title} className="mb-6">
-            <p className="px-6 mb-2 text-10 font-semibold text-gray-500 uppercase">
+            <p className="px-6 mb-4 text-10 font-semibold text-gray-500 uppercase">
               {sec.title}
             </p>
             <ul>
@@ -53,11 +54,10 @@ const NavBarAlt: FC = () => {
                     <button
                       onClick={() => setActive(label)}
                       className={`
-                        group flex gap-3 items-center w-full px-6 py-3 mb-1
+                        group flex gap-3 items-center w-full px-9 py-3 mb-1
                         text-10 text-gray-700 font-medium
                         rounded-r-full
                         transition-colors duration-200
-                        
                         ${
                           isActive
                             ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600"
@@ -75,15 +75,15 @@ const NavBarAlt: FC = () => {
                           }
                         `}
                       />
-                      <span className="ml-3 flex">{label}</span>
-                      {/* {count != null && (
+                      <span className="ml-3 flex-1 flex">{label}</span>
+                      {count != null && (
                         <span
                           className={`
                             inline-flex items-center justify-center
                             px-2 py-0.5 text-xs font-semibold
                             ${
                               isActive
-                                ? "bg-green-600 text-white"
+                                ? "bg-blue-600 text-white"
                                 : "bg-gray-200 text-gray-600"
                             }
                             rounded-full
@@ -91,7 +91,7 @@ const NavBarAlt: FC = () => {
                         >
                           {count}
                         </span>
-                      )} */}
+                      )}
                     </button>
                   </li>
                 );
