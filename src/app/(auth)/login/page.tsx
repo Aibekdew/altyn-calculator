@@ -3,8 +3,10 @@
 import React, { FC, useState } from "react";
 import scss from "./LogIn.module.scss";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { useRouter } from "next/navigation";
 
 const LogIn: FC = () => {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
@@ -93,7 +95,6 @@ const LogIn: FC = () => {
               ))}
           </div>
         </div>
-
         <button type="submit" className={scss.button}>
           Войти
         </button>

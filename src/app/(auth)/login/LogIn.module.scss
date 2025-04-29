@@ -34,7 +34,7 @@ $radius: 16px;
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.084);
   z-index: 1;
 }
 
@@ -47,7 +47,11 @@ $radius: 16px;
   padding: 40px 32px;
   border-radius: $radius;
   backdrop-filter: blur(15px);
-  background: linear-gradient(135deg, $card-bg 0%, rgba(33, 51, 83, 0.16) 100%);
+  background: linear-gradient(
+    135deg,
+    $card-bg 0%,
+    rgba(33, 51, 83, 0.049) 100%
+  );
   border: 1px solid $card-border;
   box-shadow: 0 8px 32px $card-shadow;
   display: flex;
