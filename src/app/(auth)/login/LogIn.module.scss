@@ -1,0 +1,206 @@
+/* ---------- Variables ---------- */
+$card-bg: rgba(22, 32, 55, 0.75);
+$card-border: rgba(255, 255, 255, 0.12);
+$card-shadow: rgba(0, 0, 0, 0.6);
+$neon-blue: #21cdff;
+$button-blue: #052a89;
+$button-light: #06238c;
+$text-color: #ffffff;
+$text-light: #d0d9ff;
+$radius: 16px;
+
+/* ---------- Page & Parallax Background ---------- */
+.page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.background {
+  position: absolute;
+  inset: 0;
+  background: url("/image/loginimg.jpg") center/cover no-repeat;
+  background-attachment: fixed;
+  transition: transform 0.2s ease-out;
+  will-change: transform;
+  z-index: 0;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+/* ---------- Card ---------- */
+.card {
+  position: relative;
+  z-index: 2;
+  max-width: 400px;
+  width: 100%;
+  padding: 40px 32px;
+  border-radius: $radius;
+  backdrop-filter: blur(15px);
+  background: linear-gradient(135deg, $card-bg 0%, rgba(33, 51, 83, 0.16) 100%);
+  border: 1px solid $card-border;
+  box-shadow: 0 8px 32px $card-shadow;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  transition: transform 0.1s ease-out;
+}
+
+/* ---------- Typography & Logo ---------- */
+.kyrgyz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  img {
+    width: 100%;
+    max-height: 140px;
+    object-fit: contain;
+  }
+
+  .kyrgyz_text {
+    margin-top: 8px;
+    h1 {
+      color: $text-color;
+      font-size: 2.5rem;
+    }
+  }
+}
+
+/* ---------- Inputs ---------- */
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.9rem;
+  color: $text-light;
+  margin-left: 5px;
+  transition: 0.3s;
+}
+
+.inputWrapper {
+  position: relative;
+
+  &:focus-within {
+    .label {
+      color: $neon-blue;
+    }
+    .underline {
+      transform: scaleX(1);
+    }
+    .emailIcon,
+    .lockIcon,
+    .toggleIcon {
+      color: $neon-blue;
+    }
+  }
+}
+
+.input {
+  width: 100%;
+  height: 40px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  color: $text-color;
+  font-size: 1rem;
+  padding: 0 35px 5px 5px;
+  outline: none;
+}
+
+.underline {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #2179ff, $neon-blue);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+/* ---------- Icons ---------- */
+.emailIcon,
+.lockIcon,
+.toggleIcon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: $text-light;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  z-index: 2;
+}
+
+/* ---------- Button ---------- */
+.button {
+  height: 48px;
+  border: none;
+  border-radius: 24px;
+  font-weight: 600;
+  color: $text-color;
+  cursor: pointer;
+  background: linear-gradient(90deg, $button-blue 0%, $button-light 100%);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.1s ease-out;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.25),
+      transparent
+    );
+    left: -100%;
+    transition: left 0.5s;
+  }
+
+  &:hover {
+    &::before {
+      left: 100%;
+    }
+    transform: translateY(-2px);
+  }
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Animations ---------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .card {
+    max-width: 90%;
+  }
+}
