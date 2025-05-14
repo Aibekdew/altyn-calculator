@@ -1,17 +1,13 @@
+// src/app/(site)/layout.tsx
+"use client";
 
+import React, { ReactNode } from "react";
 import LayoutSite from "@/components/layout/LayoutSite";
-import ReduxProvider from "@/providers/ReduxProvider";
-import { FC, ReactNode } from "react";
 
-interface ILayoutProps {
+interface SiteLayoutProps {
   children: ReactNode;
 }
-const layout: FC<ILayoutProps> = ({ children }) => {
-  return (
-    <ReduxProvider>
-      <LayoutSite>{children}</LayoutSite>
-    </ReduxProvider>
-  );
-};
 
-export default layout;
+export default function SiteLayout({ children }: SiteLayoutProps) {
+  return <LayoutSite>{children}</LayoutSite>;
+}

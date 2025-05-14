@@ -30,6 +30,13 @@ $radius: 16px;
   z-index: 0;
 }
 
+.error {
+  color: #ff4d4f;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 500;
+}
+
 .page::before {
   content: "";
   position: absolute;
