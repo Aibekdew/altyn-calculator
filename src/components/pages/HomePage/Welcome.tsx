@@ -2,7 +2,7 @@
 import { FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ─── animation preset ──────────────────────────────────── */
+/* ───── анимация ─────────────────────────────────────────── */
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
@@ -11,204 +11,192 @@ const fadeInUp = {
     transition: { delay: i * 0.05, duration: 0.4, ease: "easeOut" },
   }),
 };
+// тип ключей, значения которых строковые
+type StringKeys =
+  | "k1"
+  | "k2"
+  | "k3"
+  | "k4"
+  | "areaObject"
+  | "areaLand"
+  | "landHC"
+  | "landTaxRate"
+  | "landUse";
 
-/* ─── option lists (добавляйте пункты здесь) ─────────────── */
-const K1_OPTIONS = [
-  { value: "1.0", label: "г.Бишкек" },
-  { value: "0.8", label: "г.Ош" },
-  { value: "0.8", label: "Чуйская область" },
-  { value: "0.8", label: "Таласская область" },
-  { value: "0.8", label: "Иссык-Кульская область" },
-  { value: "0.8", label: "Иссык-Кульская область(курортная зона)" },
-  { value: "0.8", label: "Нарынская область" },
-  { value: "0.8", label: "Ошская область" },
-  { value: "0.8", label: "Джалал-Абадская область" },
-  { value: "0.8", label: "Баткенская область" },
+// полное состояние формы
+// Убрать `extends Record<…>`
+interface FormState {
+  // <-- Вот это добавляем
+  [key: string]: string | boolean;
+
+  k1: string;
+  k2: string;
+  k3: string;
+  k4: string;
+
+  areaObject: string;
+  areaLand: string;
+
+  streetAccess: boolean;
+
+  landHC: string;
+  landTaxRate: string;
+  landUse: string;
+}
+
+/* ───── справочники ──────────────────────────────────────── */
+type KOption = { value: string; label: string };
+
+type K1Option = KOption & { baseRate: number };  
+export const K1_OPTIONS: K1Option[] = [
+  { value: "1.0", label: "г.Бишкек", baseRate: 100 },
+  { value: "1.0", label: "Иссык-Куль (курортная зона)", baseRate: 100 },
+  { value: "0.9", label: "г.Ош", baseRate: 90 },
+  { value: "0.9", label: "Ошская область", baseRate: 80 },
+  { value: "0.9", label: "Чуйская область", baseRate: 80 },
+  { value: "0.9", label: "Таласская область", baseRate: 80 },
+  { value: "0.9", label: "Иссык-Кульская область", baseRate: 80 },
+  { value: "0.9", label: "Нарынская область", baseRate: 80 },
+  { value: "0.9", label: "Джалал-Абадская область", baseRate: 80 },
+  { value: "0.9", label: "Баткенская область", baseRate: 80 },
 ];
 
-const K2_OPTIONS = [
+export const K2_OPTIONS: KOption[] = [
   { value: "1.0", label: "удовлетворительное – требуется капитальный ремонт" },
-  {
-    value: "0.9",
-    label: "удовлетворительное – требуется косметический ремонт",
-  },
-  { value: "0.9", label: "хорошее (не требуется ремонт)" },
+  { value: "1.1", label: "удовлетворительное – требуется косметический ремонт" },
+  { value: "1.2", label: "хорошее (не требуется ремонт)" },
 ];
 
-const K3_OPTIONS = [
-  {
-    value: "1.3",
-    label: "наличие водопровода, горячей воды, центрального отопления",
-  },
-  { value: "1.1", label: "наличие водопровода, центрального отопления" },
+export const K3_OPTIONS: KOption[] = [
+  { value: "1.3", label: "наличие водопровода, горячей воды, центрального отопления" },
+  { value: "1.2", label: "наличие водопровода, центрального отопления" },
   { value: "1.1", label: "наличие водопровода" },
-  { value: "1.1", label: "техническое обустройство отсутствует" },
+  { value: "1.0", label: "техническое обустройство отсутствует" },
 ];
 
-const K4_OPTIONS = [
-  { value: "1.0", label: "Ресторан" },
-  { value: "1.2", label: "Кафе" },
-  { value: "1.2", label: "Гостиница" },
-  { value: "1.2", label: "Бильярд" },
-  { value: "1.2", label: "Сауна" },
-  { value: "1.2", label: "Бассейн" },
-  { value: "1.2", label: "Баня" },
-  { value: "1.2", label: "Обменный пункт" },
-  { value: "1.2", label: "Ломбард" },
-  { value: "1.2", label: "Банковские услуги" },
-  { value: "1.2", label: "Выездная касса" },
-  { value: "1.2", label: "Авиакасса" },
-  { value: "1.2", label: "Пункт приема платежей" },
-  { value: "1.2", label: "Размещение рекламы" },
-  { value: "1.2", label: "Установка антенн" },
-  { value: "1.2", label: "Оборудования для телекоммуникаций" },
-  { value: "1.2", label: "Швейных цех" },
-  { value: "1.2", label: "Производство" },
-  { value: "1.2", label: "Производственные услуги" },
-  { value: "1.2", label: "Магазин" },
-  { value: "1.2", label: "Ларек" },
-  { value: "1.2", label: "Торговая точка" },
-  { value: "1.2", label: "Буфет" },
-  { value: "1.2", label: "Столовая аптека" },
-  { value: "1.2", label: "Спортивно-оздоровительные услуги" },
-  { value: "1.2", label: "Кинотеатр" },
-  { value: "1.2", label: "Офис" },
-  { value: "1.2", label: "Склад" },
-  { value: "1.2", label: "Химчистка" },
-  { value: "1.2", label: "Ремонт обуви" },
-  { value: "1.2", label: "Парикмахерская" },
-  { value: "1.2", label: "Салон красоты" },
-  { value: "1.2", label: "Реставрация одежды" },
-  { value: "1.2", label: "Салон для новобрачных" },
-  { value: "1.2", label: "Компьютерные услуги и ремонт компьютерной техники" },
-  { value: "1.2", label: "Копировальные услуги" },
-  { value: "1.2", label: "Фото услуги" },
-  { value: "1.2", label: "Помещения" },
-  {
-    value: "1.2",
-    label: "Сооружения для ремонта и технического обслуживания автотранспорта",
-  },
-  { value: "1.2", label: "Автостоянка" },
-  { value: "1.2", label: "Гараж" },
-  { value: "1.2", label: "Автозаправочные станции" },
-  { value: "1.2", label: "Медицинские услуги" },
-  { value: "1.2", label: "Фитобар" },
-  { value: "1.2", label: "Учебные центры" },
-  { value: "1.2", label: "Разное" },
+const K4_GROUPS: Record<number, string[]> = {
+  2.5: ["Платёжные терминалы", "Банкоматы"],
+
+  1.7: [
+    "Ресторан", "Кафе", "Гостиница", "Ночной клуб",
+    "Бильярд", "Сауна", "Бассейн", "Баня",
+    "Обменный пункт", "Ломбард", "Банковские услуги",
+    "Выездная касса", "Авиакасса", "Пункт приема платежей"
+  ],
+
+  1.6: [
+    "Размещение рекламы", "Установка антенн", "Оборудования для телекоммуникаций",
+    "Швейных цех", "Магазин", "Ларек", "Торговая точка", "Буфет",
+    "Салон красоты", "Парикмахерская", "Реставрация одежды",
+    "Салон для новобрачных",
+    "Компьютерные услуги и ремонт компьютерной техники",
+    "Копировальные услуги", "Фото услуги"
+  ],
+
+  1.5: [
+    "Сооружения для ремонта и технического обслуживания автотранспорта",
+    "Гараж"
+  ],
+
+  1.4: ["Офис", "Кинотеатр", "Помещения"],
+
+  1.3: ["Химчистка", "Ремонт обуви"],
+
+  1.2: ["Автостоянка"],           // отдельный коэффициент
+
+  1.0: [
+    "Склад", "Производство", "Производственные услуги", "Разное"
+  ],
+};
+
+export const K4_OPTIONS: KOption[] = Object.entries(K4_GROUPS).flatMap(
+  ([value, labels]) => labels.map((label) => ({ value, label }))
+);
+
+/* ─── Kп: функциональное назначение земли ──────────────── */
+const KP_ITEMS: [string, number][] = [
+  [
+    "магазины, киоски, ларьки и другие учреждения торговли (до 10 м²)",
+    1.00,
+  ],
+  [
+    "магазины, киоски, ларьки и другие учреждения торговли (10-20 м²)",
+    1.05,
+  ],
+  [
+    "магазины, киоски, ларьки и другие учреждения торговли (20-35 м²)",
+    1.10,
+  ],
+  [
+    "магазины, киоски, ларьки и другие учреждения торговли (35-50 м²)",
+    1.15,
+  ],
+  [
+    "магазины, киоски, ларьки и другие учреждения торговли (от 50 м² и выше)",
+    1.20,
+  ],
+  ["мини-рынки, рынки, торгово-рыночные комплексы", 1.30],
+  ["скотные, фуражные рынки", 1.20],
+  ["предприятия общественного питания", 1.10],
+  ["предприятия гостиничной деятельности", 1.20],
+  ["банки, ломбарды, обменные пункты", 1.20],
+  ["предприятия игорной деятельности и дискотеки", 1.50],
+  ["офисы, бизнес-центры, биржи", 1.10],
+  ["автозаправочные станции", 1.20],
+  ["нефтебазы", 1.30],
+  ["автостоянки, предприятия автосервиса", 1.20],
+  ["сооружения рекламы", 1.10],
 ];
 
-const COMMERCIAL_USE_OPTIONS = [
-  {
-    value: "0.9",
-    label:
-      "магазины, киоски, ларьки и другие учреждения торговли (площадью до 10 кв.метра) ",
-  },
-  {
-    value: "0.9",
-    label:
-      "магазины, киоски, ларьки и другие учреждения торговли (площадью от 10 до 20 кв.метра)",
-  },
-  {
-    value: "0.9",
-    label:
-      "магазины, киоски, ларьки и другие учреждения торговли (площадью от 20 до 35 кв.метра) ",
-  },
-  {
-    value: "0.9",
-    label:
-      "магазины, киоски, ларьки и другие учреждения торговли (площадью от 35 до 50 кв.метра) ",
-  },
-  {
-    value: "0.9",
-    label:
-      "магазины, киоски, ларьки и другие учреждения торговли (площадью от 50 кв.метра и выше) ",
-  },
-  {
-    value: "0.9",
-    label: "мини-рынки, рынки, торгово-рыночные комплексы ",
-  },
-  {
-    value: "0.9",
-    label: "скотные, фуражные рынки ",
-  },
-  {
-    value: "0.9",
-    label: "предприятия общественного питания ",
-  },
-  {
-    value: "0.9",
-    label: "предприятия гостиничной деятельности ",
-  },
-  {
-    value: "0.9",
-    label: "банки, ломбарды, обменные пункты",
-  },
-  {
-    value: "0.9",
-    label: "предприятия игорной деятельности и дискотеки",
-  },
-  {
-    value: "0.9",
-    label: "офисы, бизнес-центры, биржи ",
-  },
-  {
-    value: "0.9",
-    label: "автозаправочные станции ",
-  },
-  {
-    value: "0.9",
-    label: "нефтебазы ",
-  },
-  {
-    value: "0.9",
-    label: "автостоянки, предприятия автосервиса ",
-  },
-  {
-    value: "0.9",
-    label: "сооружения рекламы",
-  },
-  {
-    value: "0.9",
-    label: "",
-  },
-];
+export const COMMERCIAL_USE_OPTIONS: KOption[] = KP_ITEMS.map(
+  ([label, value]) => ({ label, value: value.toString() })
+);
 
-/* ─── helpers / constants ────────────────────────────────── */
-const numericFields = ["areaObject", "areaLand", "areaBuilding"] as const;
+/* ───── общие утилиты ─────────────────────────────────────── */
+const numericFields = [
+  "areaObject",
+  "areaLand",
+  "landHC",
+  "landTaxRate",
+] as const;
 
 const baseFieldClass =
   "w-full h-10 bg-white border rounded-md px-3 text-gray-900 placeholder-gray-400 transition-colors appearance-none focus:outline-none focus:ring-2";
-
-/* ─── component ──────────────────────────────────────────── */
+const initialForm: FormState = {
+  k1: "",
+  k2: "",
+  k3: "",
+  k4: "",
+  areaObject: "",
+  areaLand: "",
+  streetAccess: false,
+  landHC: "",
+  landTaxRate: "",
+  landUse: "",
+};
+/* ───── главный компонент ────────────────────────────────── */
 const Welcome: FC = () => {
-  /* state */
-  const [form, setForm] = useState({
-    k1: "",
-    k2: "",
-    k3: "",
-    k4: "",
-    areaObject: "",
-    areaLand: "",
-    areaBuilding: "",
-    commercialUse: "",
-    streetAccess: false,
-  });
+  /* состояние формы */
+  const [form, setForm] = useState<FormState>(initialForm);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<null | {
-    cost: string;
+    rent: number;
+    landTax: number;
+    total: number;
     rows: { label: string; value: string }[];
   }>(null);
 
-  /* ─── validation ───────────────────────────────────────── */
+  /* ── валидация ─────────────────────────────────────────── */
   const validateField = (
     field: (typeof numericFields)[number],
     value: string,
     silent = false
   ) => {
     let m = "";
-    if (!value.trim()) m = "Заполните поле";
-    else if (isNaN(Number(value)) || Number(value) <= 0)
-      m = "Введите положительное число";
+    if (value.trim()) {
+      if (isNaN(Number(value)) || Number(value) < 0) m = "Некорректное число";
+    }
     if (!silent) setErrors((p) => ({ ...p, [field]: m }));
     return m === "";
   };
@@ -216,60 +204,98 @@ const Welcome: FC = () => {
   const validateForm = () => {
     const newErr: Record<string, string> = {};
     numericFields.forEach((f) => {
-      if (!validateField(f, (form as any)[f], true)) newErr[f] = "Ошибка";
+      if (!validateField(f, (form as any)[f], true))
+        newErr[f] = "Введите число";
     });
     setErrors(newErr);
     return !Object.keys(newErr).length;
   };
 
-  /* ─── handlers ─────────────────────────────────────────── */
+  /* ── обработчики ───────────────────────────────────────── */
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, type } = e.target;
+    // <-- приведение типа
+    const name = e.target.name as keyof FormState;
     const val =
-      e.target instanceof HTMLInputElement && type === "checkbox"
+      e.target instanceof HTMLInputElement && e.target.type === "checkbox"
         ? e.target.checked
         : e.target.value;
+
     setForm((p) => ({ ...p, [name]: val }));
-    setResult(null); // очищаем предыдущий расчёт
+    setResult(null);
+
     if (numericFields.includes(name as any))
       validateField(name as (typeof numericFields)[number], val as string);
   };
 
+  /* ── расчёт ────────────────────────────────────────────── */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    /* ─── ваша формула расчёта ──────────────────────────── */
-    const area = parseFloat(form.areaObject || "0");
-    const costNum = isFinite(area) ? area * 100 : 0;
-    const cost = `${costNum.toLocaleString("ru-RU")} сом/месяц`;
+    /* ---- подготовка коэффициентов ---- */
+    const k1Obj = K1_OPTIONS.find((o) => o.value === form.k1);
+    const baseRate = k1Obj?.baseRate ?? 0;
+    const k1 = parseFloat(form.k1 || "1");
+    const k2 = parseFloat(form.k2 || "1");
+    const k3 = parseFloat(form.k3 || "1");
+    const k4Base = parseFloat(form.k4 || "1");
+
+    const k4 = k4Base + (form.streetAccess && form.k4 ? 0.1 : 0); // надбавка за отдельный вход
+
+    const areaObject = parseFloat(form.areaObject || "0");
+
+    /* ---- аренда здания ---- */
+    const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
+
+    /* ---- земельный налог Nz ---- */
+    const areaLand = parseFloat(form.areaLand || "0");
+    const landHC = parseFloat(form.landHC || "0"); // НС
+    const landTaxRate = parseFloat(form.landTaxRate || "0"); // C
+    const landUseCoeff = parseFloat(form.landUse || "1"); // Kп
+
+    const Nz =
+      areaLand && landHC && landTaxRate
+        ? (landHC * landUseCoeff * areaLand * landTaxRate) / 12
+        : 0;
+
+    /* ---- суммарно ---- */
+    const total = rent + Nz;
+
+    /* ---- оформляем результат ---- */
+    const fmt = (v: number) =>
+      v
+        ? `${v.toLocaleString("ru-RU", {
+            maximumFractionDigits: 2,
+          })} сом`
+        : "—";
 
     const rows = [
-      { label: "Площадь объекта", value: `${form.areaObject || "—"} кв.м` },
-      { label: "Площадь зем. участка", value: `${form.areaLand || "—"} кв.м` },
-      { label: "Площадь здания", value: `${form.areaBuilding || "—"} кв.м` },
+      {
+        label: "Базовая ставка (сом/м²)",
+        value: baseRate ? baseRate.toString() : "—",
+      },
+      {
+        label: "Площадь объекта",
+        value: fmt(areaObject) + " / " + form.areaObject + " м²",
+      },
       { label: "K1", value: form.k1 || "—" },
       { label: "K2", value: form.k2 || "—" },
       { label: "K3", value: form.k3 || "—" },
-      { label: "K4", value: form.k4 || "—" },
-      {
-        label: "Коммерч. использование",
-        value: form.commercialUse ? `${form.commercialUse} (коэфф.)` : "—",
-      },
-      {
-        label: "Отдельный вход",
-        value: form.streetAccess ? "Да" : "Нет",
-      },
+      { label: "K4 (с надбавкой)", value: k4.toFixed(2) },
+      { label: "Аренда здания", value: fmt(rent) },
+      { label: "Площадь земли", value: form.areaLand || "—" },
+      { label: "НС (налого-стоимость)", value: form.landHC || "—" },
+      { label: "C (ставка налога)", value: form.landTaxRate || "—" },
+      { label: "Kп (коммерч. исп.)", value: form.landUse || "1" },
+      { label: "Земельный налог (месяц)", value: fmt(Nz) },
     ];
 
-    setResult({ cost, rows });
+    setResult({ rent, landTax: Nz, total, rows });
   };
 
-  /* ─── UI helpers ──────────────────────────────────────── */
-  let ai = 0;
-  const nextAi = () => ai++;
+  /* ── helpers для стилей ───────────────────────────────── */
   const fieldClass = (f: string) =>
     `${baseFieldClass} ${
       errors[f]
@@ -277,7 +303,10 @@ const Welcome: FC = () => {
         : "border-black focus:ring-green-600"
     }`;
 
-  /* ─── render ─────────────────────────────────────────── */
+  let ai = 0;
+  const nextAi = () => ai++;
+
+  /* ── render ───────────────────────────────────────────── */
   return (
     <motion.section
       initial="hidden"
@@ -291,49 +320,45 @@ const Welcome: FC = () => {
           custom={nextAi()}
           className="bg-white shadow-sm rounded-lg p-6"
         >
-          {/* Заголовок */}
           <motion.h2
             variants={fadeInUp}
             custom={nextAi()}
             className="text-2xl font-semibold text-gray-900"
           >
-            Калькулятор аренды
+            Калькулятор арендной платы
           </motion.h2>
-          <motion.div
-            variants={fadeInUp}
-            custom={nextAi()}
-            className="w-16 h-1 bg-green-600 mt-2 mb-4"
-          />
-          <hr className="border-t border-gray-200 mb-6" />
 
           {/* ---------- РЕЗУЛЬТАТЫ ---------- */}
           <AnimatePresence>
             {result && (
               <motion.div
-                key="result-card"
+                key="result"
                 initial={{ opacity: 0, y: -30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
                 transition={{ duration: 0.4 }}
-                className="mb-8 border rounded-lg shadow-sm overflow-hidden bg-gray-50"
+                className="mt-6 mb-8 border rounded-lg shadow-sm overflow-hidden bg-gray-50"
               >
                 <div className="px-4 py-2 bg-white flex items-center">
                   <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                    Результаты расчётов
+                    Итог
                   </h3>
                 </div>
 
                 <div className="border-t-4 border-green-600">
                   <div className="flex px-4 py-3 bg-white">
-                    <span className="font-medium">Стоимость аренды</span>
+                    <span className="font-medium">Всего в месяц</span>
                     <span className="ml-auto font-bold text-green-600">
-                      {result.cost}
+                      {result.total.toLocaleString("ru-RU", {
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      сом
                     </span>
                   </div>
 
                   {result.rows.map((r, i) => (
                     <div
-                      key={r.label}
+                      key={i}
                       className={`flex px-4 py-2 text-sm ${
                         i % 2 ? "bg-gray-100" : "bg-gray-50"
                       }`}
@@ -350,26 +375,33 @@ const Welcome: FC = () => {
           {/* ---------- ФОРМА ---------- */}
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col lg:flex-row gap-8">
-              {/* Левая колонка (select-поля) */}
+              {/* левая колонка */}
               <div className="flex flex-col gap-6 w-full lg:w-1/2">
-                {[
-                  {
-                    id: "k1",
-                    label: "Населённый пункт (K1)",
-                    options: K1_OPTIONS,
-                  },
-                  {
-                    id: "k2",
-                    label: "Тех. состояние (K2)",
-                    options: K2_OPTIONS,
-                  },
-                  {
-                    id: "k3",
-                    label: "Тех. обустройство (K3)",
-                    options: K3_OPTIONS,
-                  },
-                  { id: "k4", label: "Цель аренды (K4)", options: K4_OPTIONS },
-                ].map(({ id, label, options }) => (
+                {/* K1-K4 */}
+                {(
+                  [
+                    {
+                      id: "k1",
+                      label: "Населённый пункт (K1)",
+                      options: K1_OPTIONS,
+                    },
+                    {
+                      id: "k2",
+                      label: "Тех. состояние (K2)",
+                      options: K2_OPTIONS,
+                    },
+                    {
+                      id: "k3",
+                      label: "Тех. обустройство (K3)",
+                      options: K3_OPTIONS,
+                    },
+                    {
+                      id: "k4",
+                      label: "Цель аренды (K4)",
+                      options: K4_OPTIONS,
+                    },
+                  ] as { id: StringKeys; label: string; options: KOption[] }[]
+                ).map(({ id, label, options }) => (
                   <motion.div
                     key={id}
                     variants={fadeInUp}
@@ -380,16 +412,15 @@ const Welcome: FC = () => {
                       {label}
                     </label>
                     <select
-                      id={id}
-                      name={id}
-                      value={(form as any)[id]}
+                      id={`${id}`}
+                      name={`${id}`}
+                      value={String(form[id])}
                       onChange={handleChange}
                       className={fieldClass(id)}
                     >
-                      <option value="">выберите из списка</option>
-
-                      {options.map((o) => (
-                        <option key={o.value} value={o.value}>
+                      <option value="">выберите…</option>
+                      {options.map((o, idx) => (
+                        <option key={`${o.value}-${idx}`} value={o.value}>
                           {o.label}
                         </option>
                       ))}
@@ -398,18 +429,18 @@ const Welcome: FC = () => {
                 ))}
               </div>
 
-              {/* Правая колонка (числовые inputs + commercialUse) */}
+              {/* правая колонка */}
               <div className="flex flex-col gap-6 w-full lg:w-1/2">
+                {/* площади */}
                 {[
                   {
                     id: "areaObject",
-                    label: "Площадь арендуемого объекта (кв.м)",
+                    label: "Площадь арендуемого объекта (м²)",
                   },
                   {
                     id: "areaLand",
-                    label: "Площадь земельного участка (кв.м)",
+                    label: "Площадь земельного участка (м²)",
                   },
-                  { id: "areaBuilding", label: "Площадь здания (кв.м)" },
                 ].map(({ id, label }) => (
                   <motion.div
                     key={id}
@@ -417,16 +448,19 @@ const Welcome: FC = () => {
                     custom={nextAi()}
                     className="transition-all hover:-translate-y-1 hover:shadow-md"
                   >
-                    <label htmlFor={id} className="block mb-1 text-blue-600">
+                    <label
+                      htmlFor={`${id}`}
+                      className="block mb-1 text-blue-600"
+                    >
                       {label}
                     </label>
                     <input
                       type="text"
-                      id={id}
-                      name={id}
-                      value={(form as any)[id]}
+                      id={String(id)}
+                      name={String(id)}
+                      value={String(form[id])}
                       onChange={handleChange}
-                      placeholder="Введите число"
+                      placeholder="Число"
                       className={fieldClass(id)}
                     />
                     {errors[id] && (
@@ -435,37 +469,71 @@ const Welcome: FC = () => {
                   </motion.div>
                 ))}
 
-                {/* commercialUse */}
+                {/* земля: НС и ставка */}
+                {[
+                  {
+                    id: "landHC",
+                    label: "НС (налого-стоимость 1 м² земли), сом",
+                  },
+                  {
+                    id: "landTaxRate",
+                    label: "С (ставка налога, коэф.)",
+                  },
+                ].map(({ id, label }) => (
+                  <motion.div
+                    key={id}
+                    variants={fadeInUp}
+                    custom={nextAi()}
+                    className="transition-all hover:-translate-y-1 hover:shadow-md"
+                  >
+                    <label
+                      htmlFor={`${id}`}
+                      className="block mb-1 text-blue-600"
+                    >
+                      {label}
+                    </label>
+                    <input
+                      type="text"
+                      id={`${id}`}
+                      name={`${id}`}
+                      value={String(form[id])}
+                      onChange={handleChange}
+                      placeholder="Число"
+                      className={fieldClass(id)}
+                    />
+                    {errors[id] && (
+                      <p className="text-red-600 text-sm mt-1">{errors[id]}</p>
+                    )}
+                  </motion.div>
+                ))}
+
+                {/* Kп – коммерч. использование */}
                 <motion.div
                   variants={fadeInUp}
                   custom={nextAi()}
                   className="transition-all hover:-translate-y-1 hover:shadow-md"
                 >
-                  <label
-                    htmlFor="commercialUse"
-                    className="block mb-1 text-blue-600"
-                  >
-                    Коммерческое использование земли
+                  <label htmlFor="landUse" className="block mb-1 text-blue-600">
+                    Коэффициент Kп (функц. назначение земли)
                   </label>
                   <select
-                    id="commercialUse"
-                    name="commercialUse"
-                    value={form.commercialUse}
+                    id="landUse"
+                    name="landUse"
+                    value={form.landUse}
                     onChange={handleChange}
-                    className={fieldClass("commercialUse")}
+                    className={fieldClass("landUse")}
                   >
-                    <option value="">выберите из списка</option>
-                    {COMMERCIAL_USE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
+{COMMERCIAL_USE_OPTIONS.map((o, idx) => (
+  <option key={`${o.value}-${idx}`} value={o.value}>
+    {o.label}
+  </option>
+))}
                   </select>
                 </motion.div>
               </div>
             </div>
 
-            {/* streetAccess */}
+            {/* отдельный вход */}
             <motion.div
               variants={fadeInUp}
               custom={nextAi()}
@@ -480,20 +548,20 @@ const Welcome: FC = () => {
                 className="h-4 w-4 text-green-600 border-black rounded focus:outline-none focus:ring-2 focus:ring-green-600 transition-colors"
               />
               <label htmlFor="streetAccess" className="ml-2 text-gray-800">
-                Объект расположен вдоль улицы и имеет отдельный вход/выход
+                Объект имеет отдельный вход/выход вдоль улицы
               </label>
             </motion.div>
 
-            {/* button */}
+            {/* кнопка */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               variants={fadeInUp}
               custom={nextAi()}
               type="submit"
-              className="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded shadow-md focus:outline-none focus:ring-2 focus:ring-green-600 transition-all"
+              className="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded shadow-md focus:outline-none focus:ring-2 focus:ring-green-600 transition-all"
             >
-              Рассчитать стоимость аренды
+              Рассчитать
             </motion.button>
           </form>
         </motion.div>
