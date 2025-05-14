@@ -11,11 +11,13 @@ interface ILayoutSiteProps {
 const LayoutSite: FC<ILayoutSiteProps> = ({ children }) => {
   return (
     <div className={scss.LayoutSite}>
-      <Header />
       <div className={scss.block}>
-        <NavBar />
-        <div className={scss.block2}>
-          <div className={scss.children}>{children}</div>
+        {/* <div className={scss.nav}>
+          <NavBar />
+        </div> */}
+        <div className={scss.children}>
+          <Header />
+          <main className={scss.center}>{children}</main>
           <Footer />
         </div>
       </div>

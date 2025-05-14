@@ -30,7 +30,7 @@ const Header: FC = () => {
   };
 
   return (
-    <header className="w-full fixed top-0 bg-white dark:bg-white-900 shadow">
+    <header className="w-[100%] top-0 bg-white dark:bg-white-900 shadow">
       <div className=" mx-auto flex items-center justify-between py-4 px-6">
         {/* Логотип */}
         <Link href="/" className="flex items-center">
