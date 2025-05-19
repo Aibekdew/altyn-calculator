@@ -2,7 +2,27 @@
 import { FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const containerClass =
+  "bg-white/20 backdrop-blur-lg rounded-3xl p-10 hover:scale-105 transition-transform";
+const cardClass = "bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-8";
+const fieldClassBase =
+  "w-full px-4 py-3 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-xl placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 transition";
+const selectClassBase = fieldClassBase + " appearance-none pr-8";
+const buttonClass =
+  "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-lg py-4 px-10 rounded-full shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 transition-transform transform hover:-translate-y-1";
 /* ───── анимация ─────────────────────────────────────────── */
+
+const resultWrapperClass =
+  "mt-6 mb-8 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-lg overflow-hidden";
+const resultHeaderClass = "px-6 py-4 bg-white flex items-center";
+const resultTitleClass = "text-xl font-semibold text-gray-900 flex-1";
+const totalBorderClass = "border-t-4 border-green-500";
+const totalRowClass =
+  "flex px-6 py-4 bg-white justify-between items-center";
+const totalValueClass = "font-bold text-green-600 text-2xl";
+const tableRowClass = "flex px-6 py-3 text-base";
+const labelClass = "w-1/2 text-gray-700";
+const valueClass = "w-1/2 text-gray-900 text-right";
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
@@ -47,7 +67,7 @@ interface FormState {
 /* ───── справочники ──────────────────────────────────────── */
 type KOption = { value: string; label: string };
 
-type K1Option = KOption & { baseRate: number };  
+type K1Option = KOption & { baseRate: number };
 export const K1_OPTIONS: K1Option[] = [
   { value: "1.0", label: "г.Бишкек", baseRate: 100 },
   { value: "1.0", label: "Иссык-Куль (курортная зона)", baseRate: 100 },
@@ -63,12 +83,18 @@ export const K1_OPTIONS: K1Option[] = [
 
 export const K2_OPTIONS: KOption[] = [
   { value: "1.0", label: "удовлетворительное – требуется капитальный ремонт" },
-  { value: "1.1", label: "удовлетворительное – требуется косметический ремонт" },
+  {
+    value: "1.1",
+    label: "удовлетворительное – требуется косметический ремонт",
+  },
   { value: "1.2", label: "хорошее (не требуется ремонт)" },
 ];
 
 export const K3_OPTIONS: KOption[] = [
-  { value: "1.3", label: "наличие водопровода, горячей воды, центрального отопления" },
+  {
+    value: "1.3",
+    label: "наличие водопровода, горячей воды, центрального отопления",
+  },
   { value: "1.2", label: "наличие водопровода, центрального отопления" },
   { value: "1.1", label: "наличие водопровода" },
   { value: "1.0", label: "техническое обустройство отсутствует" },
@@ -78,35 +104,52 @@ const K4_GROUPS: Record<number, string[]> = {
   2.5: ["Платёжные терминалы", "Банкоматы"],
 
   1.7: [
-    "Ресторан", "Кафе", "Гостиница", "Ночной клуб",
-    "Бильярд", "Сауна", "Бассейн", "Баня",
-    "Обменный пункт", "Ломбард", "Банковские услуги",
-    "Выездная касса", "Авиакасса", "Пункт приема платежей"
+    "Ресторан",
+    "Кафе",
+    "Гостиница",
+    "Ночной клуб",
+    "Бильярд",
+    "Сауна",
+    "Бассейн",
+    "Баня",
+    "Обменный пункт",
+    "Ломбард",
+    "Банковские услуги",
+    "Выездная касса",
+    "Авиакасса",
+    "Пункт приема платежей",
   ],
 
   1.6: [
-    "Размещение рекламы", "Установка антенн", "Оборудования для телекоммуникаций",
-    "Швейных цех", "Магазин", "Ларек", "Торговая точка", "Буфет",
-    "Салон красоты", "Парикмахерская", "Реставрация одежды",
+    "Размещение рекламы",
+    "Установка антенн",
+    "Оборудования для телекоммуникаций",
+    "Швейных цех",
+    "Магазин",
+    "Ларек",
+    "Торговая точка",
+    "Буфет",
+    "Салон красоты",
+    "Парикмахерская",
+    "Реставрация одежды",
     "Салон для новобрачных",
     "Компьютерные услуги и ремонт компьютерной техники",
-    "Копировальные услуги", "Фото услуги"
+    "Копировальные услуги",
+    "Фото услуги",
   ],
 
   1.5: [
     "Сооружения для ремонта и технического обслуживания автотранспорта",
-    "Гараж"
+    "Гараж",
   ],
 
   1.4: ["Офис", "Кинотеатр", "Помещения"],
 
   1.3: ["Химчистка", "Ремонт обуви"],
 
-  1.2: ["Автостоянка"],           // отдельный коэффициент
+  1.2: ["Автостоянка"], // отдельный коэффициент
 
-  1.0: [
-    "Склад", "Производство", "Производственные услуги", "Разное"
-  ],
+  1.0: ["Склад", "Производство", "Производственные услуги", "Разное"],
 };
 
 export const K4_OPTIONS: KOption[] = Object.entries(K4_GROUPS).flatMap(
@@ -115,37 +158,25 @@ export const K4_OPTIONS: KOption[] = Object.entries(K4_GROUPS).flatMap(
 
 /* ─── Kп: функциональное назначение земли ──────────────── */
 const KP_ITEMS: [string, number][] = [
-  [
-    "магазины, киоски, ларьки и другие учреждения торговли (до 10 м²)",
-    1.00,
-  ],
-  [
-    "магазины, киоски, ларьки и другие учреждения торговли (10-20 м²)",
-    1.05,
-  ],
-  [
-    "магазины, киоски, ларьки и другие учреждения торговли (20-35 м²)",
-    1.10,
-  ],
-  [
-    "магазины, киоски, ларьки и другие учреждения торговли (35-50 м²)",
-    1.15,
-  ],
+  ["магазины, киоски, ларьки и другие учреждения торговли (до 10 м²)", 1.0],
+  ["магазины, киоски, ларьки и другие учреждения торговли (10-20 м²)", 1.05],
+  ["магазины, киоски, ларьки и другие учреждения торговли (20-35 м²)", 1.1],
+  ["магазины, киоски, ларьки и другие учреждения торговли (35-50 м²)", 1.15],
   [
     "магазины, киоски, ларьки и другие учреждения торговли (от 50 м² и выше)",
-    1.20,
+    1.2,
   ],
-  ["мини-рынки, рынки, торгово-рыночные комплексы", 1.30],
-  ["скотные, фуражные рынки", 1.20],
-  ["предприятия общественного питания", 1.10],
-  ["предприятия гостиничной деятельности", 1.20],
-  ["банки, ломбарды, обменные пункты", 1.20],
-  ["предприятия игорной деятельности и дискотеки", 1.50],
-  ["офисы, бизнес-центры, биржи", 1.10],
-  ["автозаправочные станции", 1.20],
-  ["нефтебазы", 1.30],
-  ["автостоянки, предприятия автосервиса", 1.20],
-  ["сооружения рекламы", 1.10],
+  ["мини-рынки, рынки, торгово-рыночные комплексы", 1.3],
+  ["скотные, фуражные рынки", 1.2],
+  ["предприятия общественного питания", 1.1],
+  ["предприятия гостиничной деятельности", 1.2],
+  ["банки, ломбарды, обменные пункты", 1.2],
+  ["предприятия игорной деятельности и дискотеки", 1.5],
+  ["офисы, бизнес-центры, биржи", 1.1],
+  ["автозаправочные станции", 1.2],
+  ["нефтебазы", 1.3],
+  ["автостоянки, предприятия автосервиса", 1.2],
+  ["сооружения рекламы", 1.1],
 ];
 
 export const COMMERCIAL_USE_OPTIONS: KOption[] = KP_ITEMS.map(
@@ -299,8 +330,8 @@ const Welcome: FC = () => {
   const fieldClass = (f: string) =>
     `${baseFieldClass} ${
       errors[f]
-        ? "border-red-500 focus:ring-red-500"
-        : "border-black focus:ring-green-600"
+        ? "border-red-500 focus:ring-red-500 outline-none"
+        : "border-black focus:ring-green-600 focus:border-none focus:outline-none"
     }`;
 
   let ai = 0;
@@ -311,23 +342,14 @@ const Welcome: FC = () => {
     <motion.section
       initial="hidden"
       whileInView="visible"
+      custom={nextAi()}
+      variants={fadeInUp}
       viewport={{ once: true, amount: 0.2 }}
-      className="bg-gray-100 py-8"
+      className={containerClass}
+      style={{background: 'url("/image/loginimg.jpg") center/cover no-repeat}'}}
     >
-      <div className="w-full max-w-7xl mx-auto px-4">
-        <motion.div
-          variants={fadeInUp}
-          custom={nextAi()}
-          className="bg-white shadow-sm rounded-lg p-6"
-        >
-          <motion.h2
-            variants={fadeInUp}
-            custom={nextAi()}
-            className="text-2xl font-semibold text-gray-900"
-          >
-            Калькулятор арендной платы
-          </motion.h2>
-
+      <div className="w-full max-w-7xl mx-auto">
+        <motion.div variants={fadeInUp} custom={nextAi()} className={cardClass}>
           {/* ---------- РЕЗУЛЬТАТЫ ---------- */}
           <AnimatePresence>
             {result && (
@@ -337,18 +359,17 @@ const Welcome: FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
                 transition={{ duration: 0.4 }}
-                className="mt-6 mb-8 border rounded-lg shadow-sm overflow-hidden bg-gray-50"
-              >
-                <div className="px-4 py-2 bg-white flex items-center">
-                  <h3 className="text-lg font-semibold text-gray-900 flex-1">
+                className={resultWrapperClass}              >
+                <div className={resultHeaderClass}>
+                <h3 className={resultTitleClass}>
                     Итог
                   </h3>
                 </div>
 
-                <div className="border-t-4 border-green-600">
-                  <div className="flex px-4 py-3 bg-white">
-                    <span className="font-medium">Всего в месяц</span>
-                    <span className="ml-auto font-bold text-green-600">
+                <div className={totalBorderClass}>
+                <div className={totalRowClass}>
+                <span className="font-medium">Всего в месяц</span>
+                <span className={totalValueClass}>
                       {result.total.toLocaleString("ru-RU", {
                         maximumFractionDigits: 2,
                       })}{" "}
@@ -357,16 +378,16 @@ const Welcome: FC = () => {
                   </div>
 
                   {result.rows.map((r, i) => (
-                    <div
-                      key={i}
-                      className={`flex px-4 py-2 text-sm ${
-                        i % 2 ? "bg-gray-100" : "bg-gray-50"
-                      }`}
-                    >
-                      <span className="w-1/2 text-gray-700">{r.label}</span>
-                      <span className="w-1/2 text-gray-900">{r.value}</span>
-                    </div>
-                  ))}
+         <div
+           key={i}
+           className={`${tableRowClass} ${
+             i % 2 ? "bg-gray-50" : "bg-gray-100"
+           }`}
+         >
+          <span className={labelClass}>{r.label}</span>
+          <span className={valueClass}>{r.value}</span>
+        </div>
+      ))}
                 </div>
               </motion.div>
             )}
@@ -406,7 +427,7 @@ const Welcome: FC = () => {
                     key={id}
                     variants={fadeInUp}
                     custom={nextAi()}
-                    className="transition-all hover:-translate-y-1 hover:shadow-md"
+                    className="relative"
                   >
                     <label htmlFor={id} className="block mb-1 text-blue-600">
                       {label}
@@ -416,17 +437,56 @@ const Welcome: FC = () => {
                       name={`${id}`}
                       value={String(form[id])}
                       onChange={handleChange}
-                      className={fieldClass(id)}
+                      className={selectClassBase}
                     >
-                      <option value="">выберите…</option>
+                      <option value="">выберите из списка</option>
                       {options.map((o, idx) => (
                         <option key={`${o.value}-${idx}`} value={o.value}>
                           {o.label}
                         </option>
                       ))}
                     </select>
+                    <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+                      <svg
+                        className="w-5 h-5 text-gray-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                    
                   </motion.div>
+                  
                 ))}
+                     {/* отдельный вход */}
+            <motion.div
+              variants={fadeInUp}
+              custom={nextAi()}
+              className=" flex items-center"
+            >
+              <input
+                id="streetAccess"
+                type="checkbox"
+                name="streetAccess"
+                checked={form.streetAccess}
+                onChange={handleChange}
+                className="h-5 w-5 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-300"
+              />
+              <label
+                htmlFor="streetAccess"
+                className="ml-2 text-gray-900 font-medium text-base"
+              >
+                {" "}
+                Объект имеет отдельный вход/выход вдоль улицы
+              </label>
+            </motion.div>
               </div>
 
               {/* правая колонка */}
@@ -435,19 +495,14 @@ const Welcome: FC = () => {
                 {[
                   {
                     id: "areaObject",
-                    label: "Площадь арендуемого объекта (м²)",
+                    label: "Площадь арендуемого объевыберитекта (м²)",
                   },
                   {
                     id: "areaLand",
                     label: "Площадь земельного участка (м²)",
                   },
                 ].map(({ id, label }) => (
-                  <motion.div
-                    key={id}
-                    variants={fadeInUp}
-                    custom={nextAi()}
-                    className="transition-all hover:-translate-y-1 hover:shadow-md"
-                  >
+                  <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
                     <label
                       htmlFor={`${id}`}
                       className="block mb-1 text-blue-600"
@@ -460,11 +515,11 @@ const Welcome: FC = () => {
                       name={String(id)}
                       value={String(form[id])}
                       onChange={handleChange}
-                      placeholder="Число"
-                      className={fieldClass(id)}
+                      placeholder="Введите число"
+                      className={fieldClassBase}
                     />
                     {errors[id] && (
-                      <p className="text-red-600 text-sm mt-1">{errors[id]}</p>
+                      <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
                     )}
                   </motion.div>
                 ))}
@@ -480,12 +535,7 @@ const Welcome: FC = () => {
                     label: "С (ставка налога, коэф.)",
                   },
                 ].map(({ id, label }) => (
-                  <motion.div
-                    key={id}
-                    variants={fadeInUp}
-                    custom={nextAi()}
-                    className="transition-all hover:-translate-y-1 hover:shadow-md"
-                  >
+                  <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
                     <label
                       htmlFor={`${id}`}
                       className="block mb-1 text-blue-600"
@@ -499,7 +549,7 @@ const Welcome: FC = () => {
                       value={String(form[id])}
                       onChange={handleChange}
                       placeholder="Число"
-                      className={fieldClass(id)}
+                      className={fieldClassBase}
                     />
                     {errors[id] && (
                       <p className="text-red-600 text-sm mt-1">{errors[id]}</p>
@@ -508,11 +558,7 @@ const Welcome: FC = () => {
                 ))}
 
                 {/* Kп – коммерч. использование */}
-                <motion.div
-                  variants={fadeInUp}
-                  custom={nextAi()}
-                  className="transition-all hover:-translate-y-1 hover:shadow-md"
-                >
+                <motion.div variants={fadeInUp} custom={nextAi()}>
                   <label htmlFor="landUse" className="block mb-1 text-blue-600">
                     Коэффициент Kп (функц. назначение земли)
                   </label>
@@ -521,36 +567,19 @@ const Welcome: FC = () => {
                     name="landUse"
                     value={form.landUse}
                     onChange={handleChange}
-                    className={fieldClass("landUse")}
+                    className={selectClassBase}
                   >
-{COMMERCIAL_USE_OPTIONS.map((o, idx) => (
-  <option key={`${o.value}-${idx}`} value={o.value}>
-    {o.label}
-  </option>
-))}
+                    {COMMERCIAL_USE_OPTIONS.map((o, idx) => (
+                      <option key={`${o.value}-${idx}`} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </select>
                 </motion.div>
               </div>
             </div>
 
-            {/* отдельный вход */}
-            <motion.div
-              variants={fadeInUp}
-              custom={nextAi()}
-              className="mt-4 flex items-center transition-all hover:-translate-y-1 hover:shadow-md"
-            >
-              <input
-                id="streetAccess"
-                type="checkbox"
-                name="streetAccess"
-                checked={form.streetAccess}
-                onChange={handleChange}
-                className="h-4 w-4 text-green-600 border-black rounded focus:outline-none focus:ring-2 focus:ring-green-600 transition-colors"
-              />
-              <label htmlFor="streetAccess" className="ml-2 text-gray-800">
-                Объект имеет отдельный вход/выход вдоль улицы
-              </label>
-            </motion.div>
+       
 
             {/* кнопка */}
             <motion.button
@@ -559,9 +588,9 @@ const Welcome: FC = () => {
               variants={fadeInUp}
               custom={nextAi()}
               type="submit"
-              className="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded shadow-md focus:outline-none focus:ring-2 focus:ring-green-600 transition-all"
+              className={buttonClass}
             >
-              Рассчитать
+              Рассчитать стоимость аренды
             </motion.button>
           </form>
         </motion.div>

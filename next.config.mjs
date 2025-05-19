@@ -1,11 +1,14 @@
 // next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  i18n: {
-    locales: ["ru", "en", "kg"],
-    defaultLocale: "ru",
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:8000/api/:path*",
+      },
+    ];
   },
-  // …другие настройки
 };
 
 export default nextConfig;
