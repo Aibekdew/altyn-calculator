@@ -17,8 +17,7 @@ const resultWrapperClass =
 const resultHeaderClass = "px-6 py-4 bg-white flex items-center";
 const resultTitleClass = "text-xl font-semibold text-gray-900 flex-1";
 const totalBorderClass = "border-t-4 border-green-500";
-const totalRowClass =
-  "flex px-6 py-4 bg-white justify-between items-center";
+const totalRowClass = "flex px-6 py-4 bg-white justify-between items-center";
 const totalValueClass = "font-bold text-green-600 text-2xl";
 const tableRowClass = "flex px-6 py-3 text-base";
 const labelClass = "w-1/2 text-gray-700";
@@ -346,7 +345,9 @@ const Welcome: FC = () => {
       variants={fadeInUp}
       viewport={{ once: true, amount: 0.2 }}
       className={containerClass}
-      style={{background: 'url("/image/loginimg.jpg") center/cover no-repeat}'}}
+      style={{
+        background: 'url("/image/loginimg.jpg") center/cover no-repeat}',
+      }}
     >
       <div className="w-full max-w-7xl mx-auto">
         <motion.div variants={fadeInUp} custom={nextAi()} className={cardClass}>
@@ -359,17 +360,16 @@ const Welcome: FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
                 transition={{ duration: 0.4 }}
-                className={resultWrapperClass}              >
+                className={resultWrapperClass}
+              >
                 <div className={resultHeaderClass}>
-                <h3 className={resultTitleClass}>
-                    Итог
-                  </h3>
+                  <h3 className={resultTitleClass}>Итог</h3>
                 </div>
 
                 <div className={totalBorderClass}>
-                <div className={totalRowClass}>
-                <span className="font-medium">Всего в месяц</span>
-                <span className={totalValueClass}>
+                  <div className={totalRowClass}>
+                    <span className="font-medium">Всего в месяц</span>
+                    <span className={totalValueClass}>
                       {result.total.toLocaleString("ru-RU", {
                         maximumFractionDigits: 2,
                       })}{" "}
@@ -378,16 +378,16 @@ const Welcome: FC = () => {
                   </div>
 
                   {result.rows.map((r, i) => (
-         <div
-           key={i}
-           className={`${tableRowClass} ${
-             i % 2 ? "bg-gray-50" : "bg-gray-100"
-           }`}
-         >
-          <span className={labelClass}>{r.label}</span>
-          <span className={valueClass}>{r.value}</span>
-        </div>
-      ))}
+                    <div
+                      key={i}
+                      className={`${tableRowClass} ${
+                        i % 2 ? "bg-gray-50" : "bg-gray-100"
+                      }`}
+                    >
+                      <span className={labelClass}>{r.label}</span>
+                      <span className={valueClass}>{r.value}</span>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             )}
@@ -461,32 +461,30 @@ const Welcome: FC = () => {
                         />
                       </svg>
                     </div>
-                    
                   </motion.div>
-                  
                 ))}
-                     {/* отдельный вход */}
-            <motion.div
-              variants={fadeInUp}
-              custom={nextAi()}
-              className=" flex items-center"
-            >
-              <input
-                id="streetAccess"
-                type="checkbox"
-                name="streetAccess"
-                checked={form.streetAccess}
-                onChange={handleChange}
-                className="h-5 w-5 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-300"
-              />
-              <label
-                htmlFor="streetAccess"
-                className="ml-2 text-gray-900 font-medium text-base"
-              >
-                {" "}
-                Объект имеет отдельный вход/выход вдоль улицы
-              </label>
-            </motion.div>
+                {/* отдельный вход */}
+                <motion.div
+                  variants={fadeInUp}
+                  custom={nextAi()}
+                  className=" flex items-center"
+                >
+                  <input
+                    id="streetAccess"
+                    type="checkbox"
+                    name="streetAccess"
+                    checked={form.streetAccess}
+                    onChange={handleChange}
+                    className="h-5 w-5 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-300"
+                  />
+                  <label
+                    htmlFor="streetAccess"
+                    className="ml-2 text-gray-900 font-medium text-base"
+                  >
+                    {" "}
+                    Объект имеет отдельный вход/выход вдоль улицы
+                  </label>
+                </motion.div>
               </div>
 
               {/* правая колонка */}
@@ -578,8 +576,6 @@ const Welcome: FC = () => {
                 </motion.div>
               </div>
             </div>
-
-       
 
             {/* кнопка */}
             <motion.button
