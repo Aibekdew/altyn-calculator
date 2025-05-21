@@ -2,7 +2,6 @@
 import { FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ───── базовые Tailwind-классы ─────────────────────────── */
 const containerClass =
   "bg-white/20 backdrop-blur-lg rounded-3xl p-10 hover:scale-105 transition-transform";
 const cardClass = "bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-8";
@@ -12,7 +11,6 @@ const selectClassBase = fieldClassBase + " appearance-none pr-8";
 const buttonClass =
   "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-lg py-4 px-10 rounded-full shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 transition-transform transform hover:-translate-y-1";
 
-/* ───── стили для блока результата ─────────────────────── */
 const resultWrapperClass =
   "mt-6 mb-8 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-lg overflow-hidden";
 const resultHeaderClass = "px-6 py-4 bg-white flex items-center";
@@ -24,7 +22,6 @@ const tableRowClass = "flex px-6 py-3 text-base";
 const labelClass = "w-1/2 text-gray-700";
 const valueClass = "w-1/2 text-gray-900 text-right";
 
-/* ───── анимация ────────────────────────────────────────── */
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
@@ -34,7 +31,6 @@ const fadeInUp = {
   }),
 };
 
-/* ───── типы и интерфейсы ──────────────────────────────── */
 type StringKeys =
   | "k1"
   | "k2"
@@ -60,7 +56,6 @@ interface FormState {
   landUse: string;
 }
 
-/* ───── справочники коэффициентов ──────────────────────── */
 type KOption = { value: string; label: string };
 type K1Option = KOption & { baseRate: number };
 
@@ -152,7 +147,6 @@ export const K4_OPTIONS: KOption[] = Object.entries(K4_GROUPS).flatMap(
   ([value, labels]) => labels.map((label) => ({ value, label }))
 );
 
-/* ——— коэффициент Kп (функц. назначение земли) ——— */
 const KP_ITEMS: [string, number][] = [
   ["магазины, киоски, ларьки и другие учреждения торговли (до 10 м²)", 1.0],
   ["магазины, киоски, ларьки и другие учреждения торговли (10-20 м²)", 1.05],
@@ -179,7 +173,6 @@ export const COMMERCIAL_USE_OPTIONS: KOption[] = KP_ITEMS.map(
   ([label, value]) => ({ label, value: value.toString() })
 );
 
-/* ───── утилиты ─────────────────────────────────────────── */
 const numericFields = [
   "areaObject",
   "areaLand",
@@ -200,7 +193,6 @@ const initialForm: FormState = {
   landUse: "",
 };
 
-/* ───── главный компонент ──────────────────────────────── */
 const Welcome: FC = () => {
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -211,7 +203,6 @@ const Welcome: FC = () => {
     rows: { label: string; value: string }[];
   }>(null);
 
-  /* ── строгая валидация одного поля ───────────────────── */
   const validateField = (
     field: (typeof numericFields)[number],
     value: string,
@@ -225,7 +216,6 @@ const Welcome: FC = () => {
     return msg === "";
   };
 
-  /* ── валидация всей формы ────────────────────────────── */
   const validateForm = () => {
     const newErr: Record<string, string> = {};
     numericFields.forEach((f) => {
@@ -238,7 +228,6 @@ const Welcome: FC = () => {
     return !Object.keys(newErr).length;
   };
 
-  /* ── обработчик изменений ────────────────────────────── */
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -255,12 +244,10 @@ const Welcome: FC = () => {
       validateField(name as (typeof numericFields)[number], val as string);
   };
 
-  /* ── расчёт при сабмите ─────────────────────────────── */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    /* ---- коэффициенты ---- */
     const k1Obj = K1_OPTIONS.find((o) => o.value === form.k1);
     const baseRate = k1Obj?.baseRate ?? 0;
 
@@ -273,7 +260,6 @@ const Welcome: FC = () => {
     const areaObject = parseFloat(form.areaObject || "0");
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
 
-    /* ---- земельный налог ---- */
     const areaLand = parseFloat(form.areaLand || "0");
     const landHC = parseFloat(form.landHC || "0");
     const landTaxRate = parseFloat(form.landTaxRate || "0");
@@ -286,7 +272,6 @@ const Welcome: FC = () => {
 
     const total = rent + Nz;
 
-    /* ---- оформление ---- */
     const fmt = (v: number) =>
       v
         ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом`
@@ -316,7 +301,6 @@ const Welcome: FC = () => {
     setResult({ rent, landTax: Nz, total, rows });
   };
 
-  /* ── утилита классов для инпутов ─────────────────────── */
   const fieldClass = (f: string) =>
     `${fieldClassBase} ${
       errors[f]
@@ -327,7 +311,6 @@ const Welcome: FC = () => {
   let ai = 0;
   const nextAi = () => ai++;
 
-  /* ───── JSX ───────────────────────────────────────────── */
   return (
     <motion.section
       initial="hidden"
@@ -342,7 +325,6 @@ const Welcome: FC = () => {
     >
       <div className="w-full max-w-7xl mx-auto">
         <motion.div variants={fadeInUp} custom={nextAi()} className={cardClass}>
-          {/* ---------- РЕЗУЛЬТАТ ---------- */}
           <AnimatePresence>
             {result && (
               <motion.div
@@ -384,10 +366,8 @@ const Welcome: FC = () => {
             )}
           </AnimatePresence>
 
-          {/* ---------- ФОРМА ---------- */}
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col lg:flex-row gap-8">
-              {/* левая колонка */}
               <div className="flex flex-col gap-6 w-full lg:w-1/2">
                 {(
                   [
@@ -454,7 +434,6 @@ const Welcome: FC = () => {
                   </motion.div>
                 ))}
 
-                {/* отдельный вход */}
                 <motion.div
                   variants={fadeInUp}
                   custom={nextAi()}
@@ -477,7 +456,6 @@ const Welcome: FC = () => {
                 </motion.div>
               </div>
 
-              {/* правая колонка */}
               <div className="flex flex-col gap-6 w-full lg:w-1/2">
                 {[
                   {
@@ -558,7 +536,6 @@ const Welcome: FC = () => {
               </div>
             </div>
 
-            {/* кнопка */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
