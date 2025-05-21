@@ -2,16 +2,17 @@
 import { FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+/* ───── базовые Tailwind-классы ─────────────────────────── */
 const containerClass =
   "bg-white/20 backdrop-blur-lg rounded-3xl p-10 hover:scale-105 transition-transform";
 const cardClass = "bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-8";
 const fieldClassBase =
-  "w-full px-4 py-3 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-xl placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 transition";
+  "w-full px-4 py-3 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-xl placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 transition";
 const selectClassBase = fieldClassBase + " appearance-none pr-8";
 const buttonClass =
   "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-lg py-4 px-10 rounded-full shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 transition-transform transform hover:-translate-y-1";
-/* ───── анимация ─────────────────────────────────────────── */
 
+/* ───── стили для блока результата ─────────────────────── */
 const resultWrapperClass =
   "mt-6 mb-8 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-lg overflow-hidden";
 const resultHeaderClass = "px-6 py-4 bg-white flex items-center";
@@ -22,6 +23,8 @@ const totalValueClass = "font-bold text-green-600 text-2xl";
 const tableRowClass = "flex px-6 py-3 text-base";
 const labelClass = "w-1/2 text-gray-700";
 const valueClass = "w-1/2 text-gray-900 text-right";
+
+/* ───── анимация ────────────────────────────────────────── */
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
@@ -30,7 +33,8 @@ const fadeInUp = {
     transition: { delay: i * 0.05, duration: 0.4, ease: "easeOut" },
   }),
 };
-// тип ключей, значения которых строковые
+
+/* ───── типы и интерфейсы ──────────────────────────────── */
 type StringKeys =
   | "k1"
   | "k2"
@@ -42,31 +46,24 @@ type StringKeys =
   | "landTaxRate"
   | "landUse";
 
-// полное состояние формы
-// Убрать `extends Record<…>`
 interface FormState {
-  // <-- Вот это добавляем
   [key: string]: string | boolean;
-
   k1: string;
   k2: string;
   k3: string;
   k4: string;
-
   areaObject: string;
   areaLand: string;
-
   streetAccess: boolean;
-
   landHC: string;
   landTaxRate: string;
   landUse: string;
 }
 
-/* ───── справочники ──────────────────────────────────────── */
+/* ───── справочники коэффициентов ──────────────────────── */
 type KOption = { value: string; label: string };
-
 type K1Option = KOption & { baseRate: number };
+
 export const K1_OPTIONS: K1Option[] = [
   { value: "1.0", label: "г.Бишкек", baseRate: 100 },
   { value: "1.0", label: "Иссык-Куль (курортная зона)", baseRate: 100 },
@@ -146,7 +143,7 @@ const K4_GROUPS: Record<number, string[]> = {
 
   1.3: ["Химчистка", "Ремонт обуви"],
 
-  1.2: ["Автостоянка"], // отдельный коэффициент
+  1.2: ["Автостоянка"],
 
   1.0: ["Склад", "Производство", "Производственные услуги", "Разное"],
 };
@@ -155,7 +152,7 @@ export const K4_OPTIONS: KOption[] = Object.entries(K4_GROUPS).flatMap(
   ([value, labels]) => labels.map((label) => ({ value, label }))
 );
 
-/* ─── Kп: функциональное назначение земли ──────────────── */
+/* ——— коэффициент Kп (функц. назначение земли) ——— */
 const KP_ITEMS: [string, number][] = [
   ["магазины, киоски, ларьки и другие учреждения торговли (до 10 м²)", 1.0],
   ["магазины, киоски, ларьки и другие учреждения торговли (10-20 м²)", 1.05],
@@ -182,7 +179,7 @@ export const COMMERCIAL_USE_OPTIONS: KOption[] = KP_ITEMS.map(
   ([label, value]) => ({ label, value: value.toString() })
 );
 
-/* ───── общие утилиты ─────────────────────────────────────── */
+/* ───── утилиты ─────────────────────────────────────────── */
 const numericFields = [
   "areaObject",
   "areaLand",
@@ -190,8 +187,6 @@ const numericFields = [
   "landTaxRate",
 ] as const;
 
-const baseFieldClass =
-  "w-full h-10 bg-white border rounded-md px-3 text-gray-900 placeholder-gray-400 transition-colors appearance-none focus:outline-none focus:ring-2";
 const initialForm: FormState = {
   k1: "",
   k2: "",
@@ -204,11 +199,10 @@ const initialForm: FormState = {
   landTaxRate: "",
   landUse: "",
 };
-/* ───── главный компонент ────────────────────────────────── */
-const Welcome: FC = () => {
-  /* состояние формы */
-  const [form, setForm] = useState<FormState>(initialForm);
 
+/* ───── главный компонент ──────────────────────────────── */
+const Welcome: FC = () => {
+  const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<null | {
     rent: number;
@@ -217,35 +211,37 @@ const Welcome: FC = () => {
     rows: { label: string; value: string }[];
   }>(null);
 
-  /* ── валидация ─────────────────────────────────────────── */
+  /* ── строгая валидация одного поля ───────────────────── */
   const validateField = (
     field: (typeof numericFields)[number],
     value: string,
     silent = false
-  ) => {
-    let m = "";
-    if (value.trim()) {
-      if (isNaN(Number(value)) || Number(value) < 0) m = "Некорректное число";
-    }
-    if (!silent) setErrors((p) => ({ ...p, [field]: m }));
-    return m === "";
+  ): boolean => {
+    let msg = "";
+    if (!value.trim()) msg = "Заполните поле";
+    else if (isNaN(Number(value))) msg = "Введите число";
+
+    if (!silent) setErrors((p) => ({ ...p, [field]: msg }));
+    return msg === "";
   };
 
+  /* ── валидация всей формы ────────────────────────────── */
   const validateForm = () => {
     const newErr: Record<string, string> = {};
     numericFields.forEach((f) => {
-      if (!validateField(f, (form as any)[f], true))
-        newErr[f] = "Введите число";
+      if (!validateField(f, String(form[f]), true))
+        newErr[f] = !String(form[f]).trim()
+          ? "Заполните поле"
+          : "Введите число";
     });
     setErrors(newErr);
     return !Object.keys(newErr).length;
   };
 
-  /* ── обработчики ───────────────────────────────────────── */
+  /* ── обработчик изменений ────────────────────────────── */
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    // <-- приведение типа
     const name = e.target.name as keyof FormState;
     const val =
       e.target instanceof HTMLInputElement && e.target.type === "checkbox"
@@ -259,46 +255,41 @@ const Welcome: FC = () => {
       validateField(name as (typeof numericFields)[number], val as string);
   };
 
-  /* ── расчёт ────────────────────────────────────────────── */
+  /* ── расчёт при сабмите ─────────────────────────────── */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    /* ---- подготовка коэффициентов ---- */
+    /* ---- коэффициенты ---- */
     const k1Obj = K1_OPTIONS.find((o) => o.value === form.k1);
     const baseRate = k1Obj?.baseRate ?? 0;
+
     const k1 = parseFloat(form.k1 || "1");
     const k2 = parseFloat(form.k2 || "1");
     const k3 = parseFloat(form.k3 || "1");
     const k4Base = parseFloat(form.k4 || "1");
-
-    const k4 = k4Base + (form.streetAccess && form.k4 ? 0.1 : 0); // надбавка за отдельный вход
+    const k4 = k4Base + (form.streetAccess && form.k4 ? 0.1 : 0);
 
     const areaObject = parseFloat(form.areaObject || "0");
-
-    /* ---- аренда здания ---- */
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
 
-    /* ---- земельный налог Nz ---- */
+    /* ---- земельный налог ---- */
     const areaLand = parseFloat(form.areaLand || "0");
-    const landHC = parseFloat(form.landHC || "0"); // НС
-    const landTaxRate = parseFloat(form.landTaxRate || "0"); // C
-    const landUseCoeff = parseFloat(form.landUse || "1"); // Kп
+    const landHC = parseFloat(form.landHC || "0");
+    const landTaxRate = parseFloat(form.landTaxRate || "0");
+    const landUseCoeff = parseFloat(form.landUse || "1");
 
     const Nz =
       areaLand && landHC && landTaxRate
         ? (landHC * landUseCoeff * areaLand * landTaxRate) / 12
         : 0;
 
-    /* ---- суммарно ---- */
     const total = rent + Nz;
 
-    /* ---- оформляем результат ---- */
+    /* ---- оформление ---- */
     const fmt = (v: number) =>
       v
-        ? `${v.toLocaleString("ru-RU", {
-            maximumFractionDigits: 2,
-          })} сом`
+        ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом`
         : "—";
 
     const rows = [
@@ -325,18 +316,18 @@ const Welcome: FC = () => {
     setResult({ rent, landTax: Nz, total, rows });
   };
 
-  /* ── helpers для стилей ───────────────────────────────── */
+  /* ── утилита классов для инпутов ─────────────────────── */
   const fieldClass = (f: string) =>
-    `${baseFieldClass} ${
+    `${fieldClassBase} ${
       errors[f]
-        ? "border-red-500 focus:ring-red-500 outline-none"
-        : "border-black focus:ring-green-600 focus:border-none focus:outline-none"
+        ? "border-red-500 focus:ring-red-500"
+        : "border-black focus:ring-green-600"
     }`;
 
   let ai = 0;
   const nextAi = () => ai++;
 
-  /* ── render ───────────────────────────────────────────── */
+  /* ───── JSX ───────────────────────────────────────────── */
   return (
     <motion.section
       initial="hidden"
@@ -346,12 +337,12 @@ const Welcome: FC = () => {
       viewport={{ once: true, amount: 0.2 }}
       className={containerClass}
       style={{
-        background: 'url("/image/loginimg.jpg") center/cover no-repeat}',
+        background: 'url("/image/loginimg.jpg") center/cover no-repeat',
       }}
     >
       <div className="w-full max-w-7xl mx-auto">
         <motion.div variants={fadeInUp} custom={nextAi()} className={cardClass}>
-          {/* ---------- РЕЗУЛЬТАТЫ ---------- */}
+          {/* ---------- РЕЗУЛЬТАТ ---------- */}
           <AnimatePresence>
             {result && (
               <motion.div
@@ -398,7 +389,6 @@ const Welcome: FC = () => {
             <div className="flex flex-col lg:flex-row gap-8">
               {/* левая колонка */}
               <div className="flex flex-col gap-6 w-full lg:w-1/2">
-                {/* K1-K4 */}
                 {(
                   [
                     {
@@ -433,8 +423,8 @@ const Welcome: FC = () => {
                       {label}
                     </label>
                     <select
-                      id={`${id}`}
-                      name={`${id}`}
+                      id={id}
+                      name={id}
                       value={String(form[id])}
                       onChange={handleChange}
                       className={selectClassBase}
@@ -463,11 +453,12 @@ const Welcome: FC = () => {
                     </div>
                   </motion.div>
                 ))}
+
                 {/* отдельный вход */}
                 <motion.div
                   variants={fadeInUp}
                   custom={nextAi()}
-                  className=" flex items-center"
+                  className="flex items-center"
                 >
                   <input
                     id="streetAccess"
@@ -481,7 +472,6 @@ const Welcome: FC = () => {
                     htmlFor="streetAccess"
                     className="ml-2 text-gray-900 font-medium text-base"
                   >
-                    {" "}
                     Объект имеет отдельный вход/выход вдоль улицы
                   </label>
                 </motion.div>
@@ -489,11 +479,10 @@ const Welcome: FC = () => {
 
               {/* правая колонка */}
               <div className="flex flex-col gap-6 w-full lg:w-1/2">
-                {/* площади */}
                 {[
                   {
                     id: "areaObject",
-                    label: "Площадь арендуемого объевыберитекта (м²)",
+                    label: "Площадь арендуемого объекта (м²)",
                   },
                   {
                     id: "areaLand",
@@ -501,20 +490,17 @@ const Welcome: FC = () => {
                   },
                 ].map(({ id, label }) => (
                   <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
-                    <label
-                      htmlFor={`${id}`}
-                      className="block mb-1 text-blue-600"
-                    >
+                    <label htmlFor={id} className="block mb-1 text-blue-600">
                       {label}
                     </label>
                     <input
                       type="text"
-                      id={String(id)}
-                      name={String(id)}
+                      id={id}
+                      name={id}
                       value={String(form[id])}
                       onChange={handleChange}
                       placeholder="Введите число"
-                      className={fieldClassBase}
+                      className={fieldClass(id)}
                     />
                     {errors[id] && (
                       <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
@@ -522,7 +508,6 @@ const Welcome: FC = () => {
                   </motion.div>
                 ))}
 
-                {/* земля: НС и ставка */}
                 {[
                   {
                     id: "landHC",
@@ -530,32 +515,28 @@ const Welcome: FC = () => {
                   },
                   {
                     id: "landTaxRate",
-                    label: "С (ставка налога, коэф.)",
+                    label: "С (ставка налога, коэффициент)",
                   },
                 ].map(({ id, label }) => (
                   <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
-                    <label
-                      htmlFor={`${id}`}
-                      className="block mb-1 text-blue-600"
-                    >
+                    <label htmlFor={id} className="block mb-1 text-blue-600">
                       {label}
                     </label>
                     <input
                       type="text"
-                      id={`${id}`}
-                      name={`${id}`}
+                      id={id}
+                      name={id}
                       value={String(form[id])}
                       onChange={handleChange}
-                      placeholder="Число"
-                      className={fieldClassBase}
+                      placeholder="Введите число"
+                      className={fieldClass(id)}
                     />
                     {errors[id] && (
-                      <p className="text-red-600 text-sm mt-1">{errors[id]}</p>
+                      <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
                     )}
                   </motion.div>
                 ))}
 
-                {/* Kп – коммерч. использование */}
                 <motion.div variants={fadeInUp} custom={nextAi()}>
                   <label htmlFor="landUse" className="block mb-1 text-blue-600">
                     Коэффициент Kп (функц. назначение земли)

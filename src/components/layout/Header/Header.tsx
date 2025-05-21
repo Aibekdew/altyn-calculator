@@ -61,7 +61,7 @@ const Header: React.FC = () => {
       initial="hidden"
       animate="visible"
       variants={headerVariants}
-      className="fixed top-0 left-0 w-full md:left-[16.3%] md:w-[67.3%] md:mt-4 z-50 px-4 py-2 sm:px-6 sm:py-3 rounded-b-xl bg-white/20 backdrop-blur-lg border-b border-white/30 shadow-xl transition-all"
+      className="fixed top-0 left-0 w-full md:left-[5.1%] md:w-[89.8%]  z-50 px-4 py-2 sm:px-6 sm:py-3 rounded-b-xl bg-white/20 backdrop-blur-lg border-b border-white/30 shadow-xl transition-all"
     >
       {/* Внутренний контейнер */}
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-nowrap gap-x-4 overflow-hidden">

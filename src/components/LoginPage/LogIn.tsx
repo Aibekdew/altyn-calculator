@@ -18,7 +18,8 @@ const LogIn: FC = () => {
   useEffect(() => {
     const token = localStorage.getItem("access");
     if (token) {
-      api.get("/auth/me/")
+      api
+        .get("/auth/me/")
         .then(() => router.replace("/home"))
         .catch(() => {});
     }
@@ -53,7 +54,8 @@ const LogIn: FC = () => {
     const box = e.currentTarget.getBoundingClientRect();
     const dx = e.clientX - (box.left + box.width / 2);
     const dy = box.top + box.height / 2 - e.clientY;
-    const maxA = 10, maxO = 20;
+    const maxA = 10,
+      maxO = 20;
     setTilt({
       rotateX: (dy / (box.height / 2)) * maxA,
       rotateY: (dx / (box.width / 2)) * maxA,
@@ -97,7 +99,7 @@ const LogIn: FC = () => {
           {error && <div className={scss.error}>{error}</div>}
 
           <div className={scss.inputGroup}>
-            <label className={scss.label}>Логин (username)</label>
+            <label className={scss.label}>Логин</label>
             <div className={scss.inputWrapper}>
               <input
                 type="text"
