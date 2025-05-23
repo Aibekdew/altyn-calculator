@@ -1,9 +1,10 @@
 "use client";
 import { FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { label } from "framer-motion/client";
 
 const containerClass =
-  "bg-white/20 backdrop-blur-lg rounded-3xl p-10 hover:scale-105 transition-transform";
+  "bg-white/20 backdrop-blur-lg p-10 hover:scale-105 transition-transform ";
 const cardClass = "bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-8";
 const fieldClassBase =
   "w-full px-4 py-3 bg-white/60 backdrop-blur-sm border border-gray-200 rounded-xl placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 transition";
@@ -320,7 +321,8 @@ const Welcome: FC = () => {
       viewport={{ once: true, amount: 0.2 }}
       className={containerClass}
       style={{
-        background: 'url("/image/loginimg.jpg") center/cover no-repeat',
+        background:
+          'url("https://img.freepik.com/free-vector/digital-technology-flowing-particles-mesh-background-design_1017-25228.jpg?semt=ais_hybrid&w=740") center/cover no-repeat',
       }}
     >
       <div className="w-full max-w-7xl mx-auto">
