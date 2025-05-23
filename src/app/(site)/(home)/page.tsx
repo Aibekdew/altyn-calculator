@@ -1,11 +1,9 @@
+// app/(site)/(home)/page.tsx
+"use client"; // ➊ добавляем
+
 import HomeSection from "@/components/pages/HomeSection";
 
-const page = () => {
-  return (
-    <div>
-      <HomeSection />
-    </div>
-  );
-};
-
-export default page;
+export default function HomePage() {
+  // ➋ компонент с заглавной буквы
+  return <HomeSection />;
+}
