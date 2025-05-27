@@ -17,7 +17,8 @@ export default function useAuth() {
       setLoading(false);
       return;
     }
-    api.get("/auth/me/")
+    api
+      .get("/auth/me/")
       .then((res) => setUser(res.data))
       .catch(() => {
         localStorage.removeItem("access");
