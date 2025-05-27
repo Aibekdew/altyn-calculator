@@ -67,6 +67,7 @@ interface FormState {
   landHC2: string; // *** extra small field next to landHC ***
   landTaxRate: string;
   landUse: string;
+  kInflation: string;
 }
 
 type KOption = { value: string; label: string };
@@ -181,8 +182,8 @@ const numericFields = [
   "areaObject",
   "areaLand",
   "landHC",
-  "landHC2",
   "landTaxRate",
+  "kInflation",
 ] as const;
 
 const initialForm: FormState = {
@@ -197,6 +198,7 @@ const initialForm: FormState = {
   landHC2: "",
   landTaxRate: "",
   landUse: "",
+  kInflation: "1",
 };
 
 /* =============================================================
@@ -276,9 +278,10 @@ const Welcome: FC = () => {
     const landTaxRate = parseFloat(form.landTaxRate || "0");
     const landUseCoeff = parseFloat(form.landUse || "1");
 
+    const kInflation = parseFloat(form.kInflation || "1");
     const Nz =
       areaLand && landHC && landTaxRate
-        ? (landHC * landUseCoeff * areaLand * landTaxRate) / 12
+        ? (landHC * landUseCoeff * kInflation * areaLand * landTaxRate) / 12
         : 0;
 
     const total = rent + Nz;
@@ -289,6 +292,18 @@ const Welcome: FC = () => {
         : "—";
 
     const rows = [
+      { label: "Формула", value: "A.пл = Баз.ст*S*K1*K2*K3*K4 + Aз" },
+      {
+        label: "Формула",
+        value: `${baseRate}*${areaObject}*${k1}*${k2}*${k3}*${k4.toFixed(
+          2
+        )} + ${Nz.toFixed(2)}`,
+      },
+      {
+        label: "Aз(формула)",
+        value: `(${form.landTaxRate}*${form.landHC}*${form.kInflation}*${landUseCoeff})/12`,
+      },
+      { label: "Aз", value: fmt(Nz) },
       { label: "Площадь объекта", value: `${form.areaObject || "—"} м²` },
       { label: "K1", value: form.k1 || "—" },
       { label: "K2", value: form.k2 || "—" },
@@ -315,32 +330,6 @@ const Welcome: FC = () => {
      =========================================================== */
   return (
     <section className={containerOuter}>
-      {/* ---------- HEADER ---------- */}
-      {/* <header className="flex items-center justify-between max-w-7xl mx-auto w-full mb-10 lg:mb-16">
-        <div className="flex items-center gap-4">
-          <span className="bg-white text-[#0A2D8F] font-extrabold text-lg rounded-lg px-3 py-1">
-            кч
-          </span>
-          <span className="text-white font-extrabold text-2xl tracking-wide">
-            КЫРГЫЗАЛТЫН
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {["Русский", "English"].map((lng) => (
-            <button
-              key={lng}
-              className="px-5 py-2 rounded-lg bg-white/20 text-white hover:bg-white/30 transition"
-            >
-              {lng}
-            </button>
-          ))}
-          <button className="px-6 py-2 rounded-xl bg-[#8B7BFF] hover:bg-[#7766ff] text-white font-medium shadow-md">
-            Войти
-          </button>
-        </div>
-      </header> */}
-
       {/* ---------- WAVE DECORATION ---------- */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 opacity-40">
         <svg
@@ -586,34 +575,40 @@ const Welcome: FC = () => {
               transition={{ duration: 0.4 }}
               className="mt-12 bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden"
             >
-              <div className="px-6 py-4 bg-white flex items-center">
-                <h3 className="text-xl font-semibold text-gray-900 flex-1">
-                  Итог
+              {/* Заголовок над таблицей */}
+              <div className="px-6 py-4">
+                <h3 className="text-2xl font-semibold text-gray-900">
+                  Результаты расчётов
                 </h3>
               </div>
+
+              {/* Собственно таблица */}
               <div className="border-t-4 border-green-500">
-                <div className="flex px-6 py-4 bg-white justify-between items-center">
-                  <span className="font-medium">Всего в месяц</span>
-                  <span className="font-bold text-green-600 text-2xl">
-                    {result.total.toLocaleString("ru-RU", {
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    сом
-                  </span>
-                </div>
-                {result.rows.map((r, i) => (
-                  <div
-                    key={i}
-                    className={`flex px-6 py-3 text-base ${
-                      i % 2 ? "bg-gray-50" : "bg-gray-100"
-                    }`}
-                  >
-                    <span className="w-1/2 text-gray-700">{r.label}</span>
-                    <span className="w-1/2 text-gray-900 text-right">
-                      {r.value}
-                    </span>
-                  </div>
-                ))}
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-4 text-left font-medium">
+                        Стоимость аренды
+                      </th>
+                      <th className="p-4 text-right text-green-600 text-xl font-bold">
+                        {result.total.toLocaleString("ru-RU", {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        сом/месяц
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {result.rows.map((r, i) => (
+                      <tr key={i} className={i % 2 ? "bg-gray-50" : ""}>
+                        <td className="p-4 text-gray-700">{r.label}</td>
+                        <td className="p-4 text-right text-gray-900">
+                          {r.value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </motion.div>
           )}
