@@ -480,7 +480,10 @@ const Welcome: FC = () => {
               </label>
               <div className="flex gap-3">
                 <input
-                  type="text"
+                  style={{
+                    width: "80%",
+                  }}
+                  type="number"
                   id="landHC"
                   name="landHC"
                   value={form.landHC}
@@ -489,6 +492,9 @@ const Welcome: FC = () => {
                   className={fieldClass("landHC") + " flex-1"}
                 />
                 <input
+                  style={{
+                    width: "20%",
+                  }}
                   type="text"
                   id="landHC2"
                   name="landHC2"
