@@ -1,12 +1,14 @@
 // src/hooks/useAuth.ts
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
 import api from "@/utils/api";
+import { api as reduxApi } from "@/redux/api";    // <-- импорт RTK Query slice
 
 export default function useAuth() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,6 +33,8 @@ export default function useAuth() {
   const logout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
+    // Сбрасываем кэш всех RTK Query-запросов
+    dispatch(reduxApi.util.resetApiState());
     router.push("/login");
   };
 
