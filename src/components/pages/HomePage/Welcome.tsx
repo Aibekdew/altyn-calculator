@@ -1,13 +1,15 @@
 "use client";
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FiEdit, FiCheck, FiX } from "react-icons/fi"; // +++
+import useLandHC2 from "@/hooks/useLandHC2";
+import React, { Fragment } from "react";
 
 /* =============================================================
    CONSTANTS – styles that reproduce the look & feel of the mockup
    ============================================================= */
 const bgGradient =
-  "bg-gradient-to-br from-[#0A2D8F] via-[#0038B8] to-[#148CFF]";
-
+  "bg-gradient-to-br bg-cover bg-fixed via-[#0038B8] to-[#148CFF]";
 const containerOuter = `relative min-h-screen flex flex-col justify-start lg:justify-center px-4 lg:px-8 py-8 ${bgGradient}`;
 
 /* translucent white cards */
@@ -24,7 +26,7 @@ const selectBase = inputBase + " appearance-none pr-10 cursor-pointer";
 /* primary CTA button */
 const buttonMain =
   "mt-8 inline-block text-lg font-bold text-white bg-gradient-to-r from-[#4F71FF] to-[#894BFF] " +
-  "hover:from-[#4062ff] hover:to-[#7a3dff] rounded-2xl px-10 py-4 shadow-2xl transition-transform " +
+  "hover:from-[#4062ff]  hover:to-[#7a3dff] rounded-2xl px-10 py-4 shadow-2xl transition-transform " +
   "hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-300/60";
 
 /* -------------------------------------------------------------
@@ -38,7 +40,11 @@ const fadeInUp = {
     transition: { delay: i * 0.05, duration: 0.45, ease: "easeOut" },
   }),
 } as const;
-
+const slideUp = {
+  hidden: { opacity: 0, y: 50 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+  exit: { opacity: 0, y: 50, transition: { duration: 0.3, ease: "easeIn" } },
+} as const;
 /* =============================================================
    TYPES & DATA
    ============================================================= */
@@ -66,23 +72,26 @@ interface FormState {
   landHC: string;
   landHC2: string; // *** extra small field next to landHC ***
   landTaxRate: string;
+  areaBuilding: string; // ← Площадь здания (новое)
+  k1zone: string; // ← зона Бишкека
   landUse: string;
   kInflation: string;
 }
 
+type ValCoeff = { value: string; label: string; coeff: number };
 type KOption = { value: string; label: string };
 
-export const K1_OPTIONS: KOption[] = [
-  { value: "1.0", label: "г.Бишкек" },
-  { value: "1.0", label: "Иссык-Куль (курортная зона)" },
-  { value: "0.9", label: "г.Ош" },
-  { value: "0.8", label: "Ошская область" },
-  { value: "0.8", label: "Чуйская область" },
-  { value: "0.8", label: "Таласская область" },
-  { value: "0.8", label: "Иссык-Кульская область" },
-  { value: "0.8", label: "Нарынская область" },
-  { value: "0.8", label: "Джалал‑Абадская область" },
-  { value: "0.8", label: "Баткенская область" },
+export const K1_OPTIONS: ValCoeff[] = [
+  { value: "bishkek", label: "г. Бишкек", coeff: 1.0 },
+  { value: "issyk_kul", label: "Иссык-Куль (курортная зона)", coeff: 1.2 },
+  { value: "osh_city", label: "г. Ош", coeff: 0.9 },
+  { value: "osh_region", label: "Ошская область", coeff: 0.8 },
+  { value: "chui", label: "Чуйская область", coeff: 0.8 },
+  { value: "talas", label: "Таласская область", coeff: 0.8 },
+  { value: "issyk_kul_reg", label: "Иссык-Кульская область", coeff: 0.8 },
+  { value: "naryn", label: "Нарынская область", coeff: 0.8 },
+  { value: "jalal_abad", label: "Джалал-Абадская область", coeff: 0.8 },
+  { value: "batken", label: "Баткенская область", coeff: 0.8 },
 ];
 
 export const K2_OPTIONS: KOption[] = [
@@ -142,46 +151,84 @@ const K4_GROUPS: Record<number, string[]> = {
   1.5: ["Сооружения для ремонта и тех. обслуживания автотранспорта", "Гараж"],
   1.4: ["Офис", "Кинотеатр", "Помещения"],
   1.3: ["Химчистка", "Ремонт обуви"],
-  1.2: ["Автостоянка"],
-  1.0: ["Склад", "Производство", "Производственные услуги", "Разное"],
+  1.2: ["Автостоянка", "Склад"], // ← добавили сюда
+  1.0: ["Производство", "Производственные услуги", "Разное"],
 };
 
-export const K4_OPTIONS: KOption[] = Object.entries(K4_GROUPS).flatMap(
-  ([value, labels]) => labels.map((label) => ({ value, label }))
+export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS).flatMap(
+  ([num, labels]) =>
+    labels.map((label, idx) => ({
+      value: `${num}_${idx}`, // уникальный id
+      label,
+      coeff: Number(num),
+    }))
 );
 
-/* -------------------------------------------------------------
-   EXTRA coefficient options (Kп)
-   ------------------------------------------------------------- */
 const KP_ITEMS: [string, number][] = [
-  ["магазины, киоски, лавки и другие учреждения' (до 10 м²)", 1.0],
-  ["магазины, киоски, лавки и другие учреждения' (10‑20 м²)", 1.05],
-  ["магазины, киоски, лавки и другие учреждения' (20‑35 м²)", 1.1],
-  ["магазины, киоски, лавки и другие учреждения' (35‑50 м²)", 1.15],
-  ["магазины, киоски, лавки и другие учреждения' (от 50 м² и выше)", 1.2],
-  ["мини‑рынки, рынки, торгово‑рыночные комплексы", 1.3],
-  ["скотные, фуражные рынки", 1.2],
-  ["предприятия общественного питания", 1.1],
-  ["предприятия гостиничной деятельности", 1.2],
-  ["банки, ломбарды, обменные пункты", 1.2],
-  ["предприятия игорной деятельности и дискотеки", 1.5],
-  ["офисы, бизнес‑центры, биржи", 1.1],
-  ["автозаправочные станции", 1.2],
-  ["нефтебазы", 1.3],
-  ["автостоянки, предприятия автосервиса", 1.2],
-  ["сооружения рекламы", 1.1],
-];
+  //  Торговля по площади
+  ["магазины, киоски, ларьки и другие учреждения торговли (до 10 м²)", 22.5],
+  ["магазины, киоски, ларьки и другие учреждения торговли (10 – 20 м²)", 16.5],
+  ["магазины, киоски, ларьки и другие учреждения торговли (20 – 35 м²)", 10.5],
+  ["магазины, киоски, ларьки и другие учреждения торговли (35 – 50 м²)", 7.5],
+  [
+    "магазины, киоски, ларьки и другие учреждения торговли (от 50 м² и выше)",
+    6.0,
+  ],
 
-export const COMMERCIAL_USE_OPTIONS: KOption[] = KP_ITEMS.map(([label, v]) => ({
-  label,
-  value: v.toString(),
-}));
+  //  Рынки
+  ["мини-рынки, рынки, торгово-рыночные комплексы", 7.5],
+  ["скотные, фуражные рынки", 4.5],
+
+  //  Сфера услуг
+  ["предприятия общественного питания", 3.0],
+  ["предприятия гостиничной деятельности", 7.0],
+  ["банки, ломбарды, обменные пункты", 5.0],
+  ["предприятия игорной деятельности и дискотеки", 7.0],
+  ["офисы, бизнес-центры, биржи", 2.5],
+
+  //  Транспорт / логистика / топливо
+  ["автозаправочные станции", 10.0],
+  ["нефтебазы", 1.5],
+  ["автостоянки, предприятия автосервиса", 4.5],
+  [
+    "административные здания предприятий транспорта (аэро-, авто-, ж/д вокзалы)",
+    0.9,
+  ],
+
+  //  Реклама
+  ["сооружения рекламы", 50.0],
+
+  //  Прочее коммерческое использование
+  [
+    "предприятия сферы отдыха и развлечений, спортивно-оздоровительных услуг",
+    1.5,
+  ],
+  [
+    "предприятия промышленности, транспорта, строительства, связи и энергетики",
+    0.5,
+  ],
+  [
+    "здания и сооружения горнодобывающих предприятий, грузовые станции и т.п.",
+    0.3,
+  ],
+  ["разрабатываемые месторождения, карьеры, шахты, разрезы, золоотвалы", 0.05],
+  [
+    "геологоразведочные, проектно-изыскательские и исследовательские работы",
+    0.005,
+  ],
+  ["воздушные линии связи и электропередачи", 0.01],
+  ["учреждения науки, образования, здравоохранения, культуры, ДЮСШ", 0.3],
+  ["сельскохозяйственные производственные здания и сооружения", 0.2],
+  ["оборонно-спортивно-технические организации", 0.01],
+];
 
 /* fields we validate as numbers */
 const numericFields = [
   "areaObject",
   "areaLand",
+  "areaBuilding", // ▪ добавили
   "landHC",
+  "landHC2",
   "landTaxRate",
   "kInflation",
 ] as const;
@@ -195,16 +242,80 @@ const initialForm: FormState = {
   areaLand: "",
   streetAccess: false,
   landHC: "",
-  landHC2: "",
+  landHC2: "1", // ← было ""  ➜  ставим "1" по умолчанию
   landTaxRate: "",
+  areaBuilding: "",
+  k1zone: "",
   landUse: "",
   kInflation: "1",
+};
+const BASE_RATE_BY_K1: Record<string, number> = {
+  bishkek: 100,
+  issyk_kul: 100,
+  osh_city: 90,
+  /* остальные области по 80 */
+  osh_region: 80,
+  chui: 80,
+  talas: 80,
+  issyk_kul_reg: 80,
+  naryn: 80,
+  jalal_abad: 80,
+  batken: 80,
+};
+/* ---- БАЗОВАЯ НАЛОГОВАЯ СТОИМОСТЬ 1 м² (НС) и К-коэфф. по НК ---- */
+/*  Значения взяты из ст. 399 НК КР и методики ГНС (2024 г.)        */
+const NS_BY_K1: Record<string, { ns: number; hc2: number }> = {
+  bishkek: { ns: 150, hc2: 1.0 }, // столица
+  osh_city: { ns: 150, hc2: 1.0 }, // крупный город
+  issyk_kul: { ns: 100, hc2: 1.2 }, // курортная зона
+  issyk_kul_reg: { ns: 50, hc2: 1.0 }, // прочая часть области
+  chui: { ns: 100, hc2: 1.0 },
+  osh_region: { ns: 50, hc2: 0.9 },
+  talas: { ns: 50, hc2: 0.4 },
+  naryn: { ns: 50, hc2: 0.4 },
+  jalal_abad: { ns: 100, hc2: 0.6 },
+  batken: { ns: 50, hc2: 0.3 },
 };
 
 /* =============================================================
    COMPONENT
    ============================================================= */
+interface KpOption {
+  value: string;
+  label: string;
+  coeff: number;
+}
+/* ───── добавьте рядом с K-справочниками ───── */
+const BISHKEK_ZONE_OPTIONS: ValCoeff[] = [
+  {
+    value: "zone1",
+    label: "границы ул.Боконбаева, Суюмбаева, Фрунзе, пр.Манаса, Боконбаева",
+    coeff: 1.3,
+  },
+  {
+    value: "zone2",
+    label:
+      "пр.Мира, ул.Ахунбаева, ул.Шабдан-Баатыра, ул.Курманжан Датка, пр.Жибек-Жолу, ул.Фучика, ул.Московская, ул.Некрасова.ю ул.Л.Толстого, пр.Мира",
+    coeff: 1.2,
+  },
+  { value: "zone3", label: "остальные районы г.Бишкек", coeff: 1.1 },
+];
+
+export const COMMERCIAL_USE_OPTIONS: KpOption[] = KP_ITEMS.map(
+  ([label, coeff]) => ({
+    label, // что видит пользователь
+    value: label, // используем само название как стабильный id
+    coeff, // числовое значение Кк
+  })
+);
 const Welcome: FC = () => {
+  const { value: backendHC2, loading: hc2Loading, persist } = useLandHC2();
+  useEffect(() => {
+    if (!hc2Loading) {
+      setForm((p) => ({ ...p, landHC2: backendHC2 }));
+      setDraftHC2(backendHC2);
+    }
+  }, [hc2Loading, backendHC2]);
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<null | {
@@ -213,7 +324,8 @@ const Welcome: FC = () => {
     total: number;
     rows: { label: string; value: string }[];
   }>(null);
-
+  const [isEditingHC2, setIsEditingHC2] = useState(false); // флаг «режим редактирования»
+  const [draftHC2, setDraftHC2] = useState(form.landHC2);
   /* ---------- validation helpers ---------- */
   const validateField = (
     field: (typeof numericFields)[number],
@@ -240,6 +352,7 @@ const Welcome: FC = () => {
     return !Object.keys(newErr).length;
   };
 
+  // ─── handleChange ──────────────────────────────────────────────────────
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -248,11 +361,29 @@ const Welcome: FC = () => {
       e.target instanceof HTMLInputElement && e.target.type === "checkbox"
         ? e.target.checked
         : e.target.value;
-    setForm((p) => ({ ...p, [name]: val }));
-    setResult(null);
 
+    /* ---------- 1. k1   (населённый пункт) ---------------------------- */
+    if (name === "k1" && typeof val === "string") {
+      const preset = NS_BY_K1[val]; // базовая НС и коэффициент НК
+      setForm((prev) => ({
+        ...prev,
+        k1: val, // обязательно сохраняем выбор!
+        landHC: preset ? String(preset.ns) : prev.landHC,
+        landHC2: preset ? String(preset.hc2) : prev.landHC2,
+      }));
+      if (preset) {
+        setDraftHC2(String(preset.hc2)); // обновляем маленький инпут
+        setErrors((p) => ({ ...p, landHC: "", landHC2: "" }));
+      }
+    } else {
+      /* ---------- 2. все остальные поля --------------------------------- */
+      setForm((prev) => ({ ...prev, [name]: val }));
+    }
+
+    /* ---------- 3. побочные действия ---------------------------------- */
+    setResult(null);
     if (numericFields.includes(name as any))
-      validateField(name as (typeof numericFields)[number], val as string);
+      validateField(name as (typeof numericFields)[number], String(val));
   };
 
   /* ---------- calculations ---------- */
@@ -260,30 +391,39 @@ const Welcome: FC = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // — базовая ставка определяется городом/районом (K1)
-    const baseRate = 100; // демонстрационное значение, оставляем логику прежней
-
-    const k1 = parseFloat(form.k1 || "1");
+    const baseRate = BASE_RATE_BY_K1[form.k1] ?? 100;
+    const k1 =
+      form.k1 === "bishkek"
+        ? (BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ??
+          1)
+        : (K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1);
     const k2 = parseFloat(form.k2 || "1");
     const k3 = parseFloat(form.k3 || "1");
+    const k4Base = K4_OPTIONS.find((o) => o.value === form.k4)?.coeff ?? 1;
 
-    const k4Base = parseFloat(form.k4 || "1");
-    const k4 = k4Base + (form.streetAccess && form.k4 ? 0.1 : 0);
+    const k4 = form.streetAccess ? Math.max(k4Base - 0.2, 1) : k4Base;
 
     const areaObject = parseFloat(form.areaObject || "0");
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
-
     const areaLand = parseFloat(form.areaLand || "0");
+    const landHC2Coeff = parseFloat(form.landHC2 || "1"); // новый множитель
+
     const landHC = parseFloat(form.landHC || "0");
+    const landHC2 = form.landHC2; // ← теперь эта переменная существует
     const landTaxRate = parseFloat(form.landTaxRate || "0");
-    const landUseCoeff = parseFloat(form.landUse || "1");
+    const landUseCoeff =
+      COMMERCIAL_USE_OPTIONS.find((o) => o.value === form.landUse)?.coeff ?? 1;
 
     const kInflation = parseFloat(form.kInflation || "1");
     const Nz =
-      areaLand && landHC && landTaxRate
-        ? (landHC * landUseCoeff * kInflation * areaLand * landTaxRate) / 12
+      areaObject && landTaxRate
+        ? (landTaxRate *
+            areaObject *
+            kInflation *
+            landHC2Coeff *
+            landUseCoeff) /
+          12
         : 0;
-
     const total = rent + Nz;
 
     const fmt = (v: number) =>
@@ -300,15 +440,23 @@ const Welcome: FC = () => {
         )} + ${Nz.toFixed(2)}`,
       },
       {
-        label: "Aз(формула)",
-        value: `(${form.landTaxRate}*${form.landHC}*${form.kInflation}*${landUseCoeff})/12`,
+        label: "Aз (формула)",
+        value: `(${landTaxRate} × ${landHC} × ${landHC2} × ${kInflation} × ${landUseCoeff}) / 12`,
       },
       { label: "Aз", value: fmt(Nz) },
       { label: "Площадь объекта", value: `${form.areaObject || "—"} м²` },
-      { label: "K1", value: form.k1 || "—" },
+      {
+        label: "K1",
+        value:
+          K1_OPTIONS.find((o) => o.value === form.k1)?.label.replace(
+            /^г\.\s*/,
+            "Г. "
+          ) ?? "—",
+      },
       { label: "K2", value: form.k2 || "—" },
       { label: "K3", value: form.k3 || "—" },
-      { label: "K4 (c надбавкой)", value: k4.toFixed(2) },
+      { label: "K4 (с учётом входа)", value: k4.toFixed(2) },
+      { label: "Площадь здания", value: `${form.areaBuilding || "—"} м²` },
       { label: "Аренда здания", value: fmt(rent) },
       { label: "Земельный налог (месяц)", value: fmt(Nz) },
     ];
@@ -329,31 +477,26 @@ const Welcome: FC = () => {
      RENDER
      =========================================================== */
   return (
-    <section className={containerOuter}>
+    <section
+      className={containerOuter}
+      style={{ backgroundImage: "url('./image/background.jpg')" }}
+    >
       {/* ---------- WAVE DECORATION ---------- */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 opacity-40">
+      <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
         <svg
-          viewBox="0 0 1440 200"
-          className="w-full h-auto"
-          preserveAspectRatio="none"
+          className="w-5 h-5 text-gray-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
           <path
-            d="M0 100 Q360 0 720 100 T1440 100 V200 H0 Z"
-            fill="none"
-            stroke="#00A3FF"
-            strokeWidth="1"
-            strokeOpacity="0.4"
-          />
-          <path
-            d="M0 150 Q360 50 720 150 T1440 150"
-            fill="none"
-            stroke="#00A3FF"
-            strokeWidth="1"
-            strokeOpacity="0.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
           />
         </svg>
       </div>
-
       {/* ---------- FORM ---------- */}
       <motion.div
         initial="hidden"
@@ -368,78 +511,144 @@ const Welcome: FC = () => {
           className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8"
         >
           {/* ===== LEFT COLUMN ===== */}
-          <div className={glassPanel}>
-            {[
-              { id: "k1", label: "Населённый пункт (КН)", options: K1_OPTIONS },
-              { id: "k2", label: "Тех. состояние (КТ)", options: K2_OPTIONS },
-              { id: "k3", label: "Категория земель (К)", options: K3_OPTIONS },
-              { id: "k4", label: "Цель аренды (КЦ)", options: K4_OPTIONS },
-            ].map(({ id, label, options }) => (
+          <div className={glassPanel + " lg:h-full"}>
+            <div className="flex flex-col gap-6 flex-1">
+              {" "}
+              {/* ➋ flex-1 – тянется */}
+              {[
+                // объединяем всё в один map
+                {
+                  id: "k1",
+                  label: "Населённый пункт (КН)",
+                  options: K1_OPTIONS,
+                },
+                {
+                  id: "k2",
+                  label: "Техническое состояние помещения (К2)",
+                  options: K2_OPTIONS,
+                },
+                {
+                  id: "k3",
+                  label: "Техническое обустройство здания (К3)",
+                  options: K3_OPTIONS,
+                },
+                { id: "k4", label: "Цель аренды (К4)", options: K4_OPTIONS },
+              ].map(({ id, label, options }) => (
+                <Fragment key={id}>
+                  {/* сам селект */}
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeInUp}
+                    custom={nextAi()}
+                    className="relative"
+                  >
+                    {" "}
+                    <label
+                      htmlFor={id}
+                      className="block mb-1 text-[#0A2D8F] font-medium"
+                    >
+                      {label}
+                    </label>
+                    <select
+                      id={id}
+                      name={id}
+                      value={String(form[id])}
+                      onChange={handleChange}
+                      className={selectBase}
+                    >
+                      <option value="">выберите из списка</option>
+                      {options.map((o, i) => (
+                        <option key={`${o.value}-${i}`} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+                      <svg
+                        className="w-5 h-5 text-gray-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </motion.div>
+                  {/* если это k1 и выбрана «bishkek» — сразу под ним вставляем селект зоны */}
+                  {id === "k1" && form.k1 === "bishkek" && (
+                    <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeInUp}
+                    custom={nextAi()}
+                    className="relative"
+                    >
+                      <label
+                        htmlFor="k1zone"
+                        className="block mb-1 text-[#0A2D8F] font-medium"
+                      >
+                        Местоположение объекта (зоны г.Бишкек)
+                      </label>
+                      <select
+                        id="k1zone"
+                        name="k1zone"
+                        value={form.k1zone}
+                        onChange={handleChange}
+                        className={selectBase}
+                      >
+                        <option value="">выберите из списка</option>
+                        {BISHKEK_ZONE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+                        <svg
+                          className="w-5 h-5 text-gray-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+                    </motion.div>
+                  )}
+                </Fragment>
+              ))}
               <motion.div
-                key={id}
                 variants={fadeInUp}
                 custom={nextAi()}
-                className="relative"
+                className="flex items-center pt-4 border-t border-white/40"
               >
-                <label
-                  htmlFor={id}
-                  className="block mb-1 text-[#0A2D8F] font-medium"
-                >
-                  {label}
-                </label>
-                <select
-                  id={id}
-                  name={id}
-                  value={String(form[id])}
+                <input
+                  id="streetAccess"
+                  type="checkbox"
+                  name="streetAccess"
+                  checked={form.streetAccess}
                   onChange={handleChange}
-                  className={selectBase}
+                  className="h-5 w-5 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-300"
+                />
+                <label
+                  htmlFor="streetAccess"
+                  className="ml-2 text-gray-900 font-medium"
                 >
-                  <option value="">выберите из списка</option>
-                  {options.map((o, i) => (
-                    <option key={`${o.value}-${i}`} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
-                  <svg
-                    className="w-5 h-5 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
+                  Объект имеет отдельный вход/выход вдоль улицы
+                </label>
               </motion.div>
-            ))}
-
-            {/* checkbox */}
-            <motion.div
-              variants={fadeInUp}
-              custom={nextAi()}
-              className="flex items-center"
-            >
-              <input
-                id="streetAccess"
-                type="checkbox"
-                name="streetAccess"
-                checked={form.streetAccess}
-                onChange={handleChange}
-                className="h-5 w-5 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-300"
-              />
-              <label
-                htmlFor="streetAccess"
-                className="ml-2 text-gray-900 font-medium"
-              >
-                Объект имеет отдельный вход/выход вдоль улицы
-              </label>
-            </motion.div>
+            </div>
           </div>
 
           {/* ===== RIGHT COLUMN ===== */}
@@ -469,7 +678,31 @@ const Welcome: FC = () => {
                 )}
               </motion.div>
             ))}
+            {/* в правой колонке добавьте сразу после areaObject */}
+            <motion.div variants={fadeInUp} custom={nextAi()}>
+              <label
+                htmlFor="areaBuilding"
+                className="block mb-1 text-[#0A2D8F] font-medium"
+              >
+                Площадь здания (Sз)
+              </label>
+              <input
+                type="text"
+                id="areaBuilding"
+                name="areaBuilding"
+                value={form.areaBuilding}
+                onChange={handleChange}
+                placeholder="Введите число"
+                className={fieldClass("areaBuilding")}
+              />
+              {errors.areaBuilding && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.areaBuilding}
+                </p>
+              )}
+            </motion.div>
 
+            {/* NS (налоговая стоимость) – two aligned inputs */}
             {/* NS (налоговая стоимость) – two aligned inputs */}
             <motion.div variants={fadeInUp} custom={nextAi()}>
               <label
@@ -478,33 +711,94 @@ const Welcome: FC = () => {
               >
                 NS (налоговая стоимость м², сом)
               </label>
-              <div className="flex gap-3">
+
+              <div className="flex gap-3 items-start">
+                {/* --- Первый (основной) инпут остаётся как был --- */}
                 <input
-                  style={{
-                    width: "80%",
-                  }}
-                  type="number"
+                  style={{ width: "80%" }}
+                  type="text"
                   id="landHC"
                   name="landHC"
                   value={form.landHC}
                   onChange={handleChange}
-                  placeholder="Введите число"
+                  placeholder="авто после выбора КН"
                   className={fieldClass("landHC") + " flex-1"}
                 />
-                <input
-                  style={{
-                    width: "20%",
-                  }}
-                  type="text"
-                  id="landHC2"
-                  name="landHC2"
-                  value={form.landHC2}
-                  onChange={handleChange}
-                  placeholder="..."
-                  className={fieldClass("landHC2") + " w-28"}
-                />
+
+                {/* --- Второй инпут + кнопки --- */}
+                <div className="flex items-center gap-2">
+                  <input
+                    style={{ width: "6rem" }}
+                    type="text"
+                    id="landHC2"
+                    name="landHC2"
+                    value={isEditingHC2 ? draftHC2 : form.landHC2}
+                    onChange={(e) =>
+                      isEditingHC2 && setDraftHC2(e.target.value)
+                    }
+                    readOnly={!isEditingHC2}
+                    placeholder="..."
+                    className={fieldClass("landHC2")}
+                  />
+
+                  {/* Кнопки управления */}
+                  {!isEditingHC2 ? (
+                    /* ✏  ВКЛЮЧИТЬ редактирование */
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraftHC2(form.landHC2); // заполняем черновик
+                        setIsEditingHC2(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 transition"
+                      title="Изменить"
+                    >
+                      <FiEdit className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <>
+                      {/* ✔  СОХРАНИТЬ */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!/^\d+(\.\d+)?$/.test(draftHC2)) {
+                            setErrors((p) => ({
+                              ...p,
+                              landHC2: "Только число",
+                            }));
+                            return;
+                          }
+                          await persist(draftHC2); // PATCH → backend
+                          setForm((p) => ({ ...p, landHC2: draftHC2 }));
+                          setIsEditingHC2(false);
+                        }}
+                        className="text-green-600 hover:text-green-800 transition"
+                        title="Сохранить"
+                      >
+                        <FiCheck className="w-5 h-5" />
+                      </button>
+                      {/* ✖  ОТМЕНА */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraftHC2(form.landHC2); // откат
+                          setIsEditingHC2(false);
+                          setErrors((p) => ({ ...p, landHC2: "" }));
+                        }}
+                        className="text-red-600 hover:text-red-800 transition"
+                        title="Отмена"
+                      >
+                        <FiX className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
+
               {errors.landHC && (
+                <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
+              )}
+              {errors.landHC2 && (
                 <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
               )}
             </motion.div>
@@ -534,12 +828,16 @@ const Welcome: FC = () => {
             </motion.div>
 
             {/* land use coefficient */}
-            <motion.div variants={fadeInUp} custom={nextAi()}>
+            <motion.div
+              className="relative"
+              variants={fadeInUp}
+              custom={nextAi()}
+            >
               <label
                 htmlFor="landUse"
                 className="block mb-1 text-[#0A2D8F] font-medium"
               >
-                Коэффициент (K) (учёт, назначение участка)
+                Коммерческое использование земли
               </label>
               <select
                 id="landUse"
@@ -548,12 +846,28 @@ const Welcome: FC = () => {
                 onChange={handleChange}
                 className={selectBase}
               >
-                {COMMERCIAL_USE_OPTIONS.map((o, idx) => (
-                  <option key={`${o.value}-${idx}`} value={o.value}>
+                <option value="">выберите из списка</option> {/* NEW */}
+                {COMMERCIAL_USE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
               </select>
+              <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+                <svg
+                  className="w-5 h-5 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
             </motion.div>
           </div>
 
@@ -575,10 +889,10 @@ const Welcome: FC = () => {
           {result && (
             <motion.div
               key="result"
-              initial={{ opacity: 0, y: -30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              transition={{ duration: 0.4 }}
+              variants={slideUp} // ← здесь
+              initial="hidden" // ← вместо inline initial
+              animate="visible" // ← вместо inline animate
+              exit="exit" // ← вместо inline exit
               className="mt-12 bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden"
             >
               {/* Заголовок над таблицей */}

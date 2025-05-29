@@ -61,24 +61,30 @@ const Header: React.FC = () => {
       initial="hidden"
       animate="visible"
       variants={headerVariants}
-      className="fixed top-0 left-0 w-full md:left-[5.1%] md:w-[89.8%]  z-50 px-4 py-2 sm:px-6 sm:py-3 rounded-b-xl bg-white/20 backdrop-blur-lg border-b border-white/30 shadow-xl transition-all"
+      className=" top-0 left-0 w-full md:left-[5.1%] md:w-[100%]  z-50 px-4 py-2 sm:px-6 sm:py-3 rounded-b-xl bg-white/20 backdrop-blur-lg border-b border-white/30 shadow-xl transition-all"
     >
       {/* Внутренний контейнер */}
-      <div className="max-w-7xl mx-auto flex items-center justify-between flex-nowrap gap-x-4 overflow-hidden">
+      <div className="max-w-full mx-auto flex items-center justify-between flex-nowrap gap-x-4 overflow-hidden">
         {/* —— ЛОГО —— */}
-        <Link
-          href="/home"
-          className="flex items-center space-x-2 p-1 sm:p-2 bg-white/30 backdrop-blur-sm rounded-lg flex-shrink-0"
-        >
-          <Image src="/image/logo.png" alt="Логотип" width={40} height={40} />
-          <span className="font-extrabold text-black text-lg sm:text-xl md:text-2xl whitespace-nowrap">
-            КЫРГЫЗАЛТЫН
-          </span>
-        </Link>
+                <div className="flex justify-center items-start ">
+            <div className="flex flex-col md:text-left ">
+              <h1 className="text-[20px] sm:text-[24px] md:text-[28px]  lg:text-[31.1px] tracking-wide font-bold leading-none text-black dark:text-white">
+                КЫРГЫЗАЛТЫН
+              </h1>
+              <p className="text-[14px] sm:text-[16px] md:text-[17px]  font-medium leading-none text-black dark:text-white">
+                АЧЫК АКЦИОНЕРДИК КОООМУ
+              </p>
+            </div>
+            <img
+              src='image/logo.png'
+              alt="Kyrgyzaltyn Logo"
+              className="w-20 sm:w-24 md:w-28 lg:w-32"
+            />
+          </div>
 
         {/* —— DESKTOP: языки + выход —— */}
         <div className="hidden lg:flex items-center gap-3 xl:gap-4 ml-auto flex-shrink-0">
-          {LANGS.map((lang) => (
+          {/* {LANGS.map((lang) => (
             <button
               key={lang.code}
               onClick={() => changeLang(lang.code)}
@@ -86,7 +92,7 @@ const Header: React.FC = () => {
             >
               {lang.label}
             </button>
-          ))}
+          ))} */}
 
           <button
             onClick={logout}
