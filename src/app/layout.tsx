@@ -4,7 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { ReactNode } from "react";
 import ClientProviders from "./ClientProviders";
 export const metadata = {
-  title: "My App",
+  title: "Kyrgyzaltyn",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
