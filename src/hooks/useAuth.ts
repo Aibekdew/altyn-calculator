@@ -47,12 +47,14 @@ export default function useAuth() {
       .finally(() => setLoading(false));
   }, [router, dispatch]);
 
-  const logout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    dispatch(reduxApi.util.resetApiState());
-    router.push("/login");
-  };
+const logout = () => {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+  setUser(null); // <--- добавь это
+  dispatch(reduxApi.util.resetApiState());
+  router.push("/login");
+};
+
 
   return { user, loading, logout };
 }
