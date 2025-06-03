@@ -55,19 +55,18 @@ const Header: React.FC = () => {
     router.push(segments.join("/") || "/");
     setMobileOpen(false);
   };
-const handleLogout = () => {
-  localStorage.clear();
-  sessionStorage.clear();
-  document.cookie.split(";").forEach((c) => {
-    document.cookie = c
-      .replace(/^ +/, "")
-      .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
-  });
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
+    });
 
-  logout(); // это сбросит user
-  window.location.href = "/login"; // жёсткая перезагрузка
-};
-
+    logout(); // это сбросит user
+    window.location.href = "/login"; // жёсткая перезагрузка
+  };
 
   return (
     <>
@@ -81,17 +80,17 @@ const handleLogout = () => {
           {/* Логотип и название */}
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
-              <h1 className="text-[20px] sm:text-[24px] md:text-[28px] lg:text-[32px] font-bold text-black dark:text-white">
+              <h1 className="text-[20px] sm:text-[24px] md:text-[28px] lg:text-[28px] font-bold text-[#003680] dark:text-[#003680]">
                 КЫРГЫЗАЛТЫН
               </h1>
-              <p className="text-[14px] sm:text-[16px] md:text-[17px] font-medium text-black dark:text-white">
+              <p className="text-[14px] sm:text-[16px] md:text-[14.5px] font-medium text-[#003680] dark:text-[#003680]">
                 АЧЫК АКЦИОНЕРДИК КОООМУ
               </p>
             </div>
             <img
               src="/image/logo.png"
               alt="Kyrgyzaltyn Logo"
-              className="w-16 sm:w-20 md:w-24 lg:w-28"
+              className="w-16 sm:w-20 md:w-20 lg:w-28"
             />
           </div>
 
