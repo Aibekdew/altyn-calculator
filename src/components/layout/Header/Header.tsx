@@ -55,6 +55,19 @@ const Header: React.FC = () => {
     router.push(segments.join("/") || "/");
     setMobileOpen(false);
   };
+const handleLogout = () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  document.cookie.split(";").forEach((c) => {
+    document.cookie = c
+      .replace(/^ +/, "")
+      .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
+  });
+
+  logout(); // это сбросит user
+  window.location.href = "/login"; // жёсткая перезагрузка
+};
+
 
   return (
     <>
@@ -94,7 +107,7 @@ const Header: React.FC = () => {
               </Link>
             ) : null}
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="inline-flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full shadow transition"
             >
               <LogOut size={18} />
@@ -134,7 +147,7 @@ const Header: React.FC = () => {
             )}
 
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="w-full text-left px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full transition"
             >
               Выйти
