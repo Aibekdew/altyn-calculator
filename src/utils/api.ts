@@ -1,3 +1,5 @@
+// src/utils/api.ts
+
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/";
@@ -7,46 +9,67 @@ const api = axios.create({
   timeout: 10_000,
 });
 
-/* ───── 1. access → Authorization ───── */
-api.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem("access");
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
-});
-
-/* ───── 2. refresh по 401 ───────────── */
+// 1) При каждом запросе ставим Authorization: Bearer <access>
 api.interceptors.response.use(
-  (r) => r,
-  async (err: AxiosError) => {
-    if (!err.config) return Promise.reject(err);
-
-    const original = err.config as AxiosRequestConfig & { _retry?: boolean };
-
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
     if (
-      err.response?.status === 401 &&
-      !original._retry &&
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
       localStorage.getItem("refresh")
     ) {
-      original._retry = true;
-
+      originalRequest._retry = true;
       try {
         const { data } = await axios.post(`${API_URL}auth/refresh/`, {
           refresh: localStorage.getItem("refresh"),
         });
-
         localStorage.setItem("access", data.access);
-        api.defaults.headers.common.Authorization = `Bearer ${data.access}`;
-        original.headers = {
-          ...original.headers,
-          Authorization: `Bearer ${data.access}`,
-        };
-        return api.request(original);
+
+        // Меняем заголовок по аналогии:
+        api.defaults.headers.common["Authorization"] = `Bearer ${data.access}`;
+        if (originalRequest.headers) {
+          originalRequest.headers["Authorization"] = `Bearer ${data.access}`;
+        }
+        return api.request(originalRequest);
       } catch {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
       }
     }
-    return Promise.reject(err);
+    return Promise.reject(error);
+  }
+);
+
+
+// 2) Если получили 401, пробуем обновить токен через refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      localStorage.getItem("refresh")
+    ) {
+      originalRequest._retry = true;
+      try {
+        const { data } = await axios.post(`${API_URL}auth/refresh/`, {
+          refresh: localStorage.getItem("refresh"),
+        });
+        localStorage.setItem("access", data.access);
+        api.defaults.headers.common.Authorization = `Bearer ${data.access}`;
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          Authorization: `Bearer ${data.access}`,
+        };
+        return api.request(originalRequest);
+      } catch {
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+      }
+    }
+    return Promise.reject(error);
   }
 );
 
