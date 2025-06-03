@@ -98,7 +98,11 @@ const AdminUsersPage: React.FC = () => {
     if (!newLastName.trim()) errors.last_name = "Фамилия обязательна.";
     if (!newPassword) errors.password = "Пароль обязателен.";
     if (!newConfirmPassword) errors.confirm_password = "Подтвердите пароль.";
-    if (newPassword && newConfirmPassword && newPassword !== newConfirmPassword) {
+    if (
+      newPassword &&
+      newConfirmPassword &&
+      newPassword !== newConfirmPassword
+    ) {
       errors.confirm_password = "Пароли не совпадают.";
     }
     if (Object.keys(errors).length) {
@@ -134,7 +138,9 @@ const AdminUsersPage: React.FC = () => {
         const apiErrors = err.response.data;
         const newErrors: Record<string, string> = {};
         Object.entries(apiErrors).forEach(([key, val]) => {
-          newErrors[key] = Array.isArray(val) ? (val as string[])[0] : String(val);
+          newErrors[key] = Array.isArray(val)
+            ? (val as string[])[0]
+            : String(val);
         });
         setFieldErrors(newErrors);
       } else {
@@ -171,7 +177,10 @@ const AdminUsersPage: React.FC = () => {
     const errors: Record<string, string> = {};
     if (!editFirstName.trim()) errors.first_name = "Имя обязательно.";
     if (!editLastName.trim()) errors.last_name = "Фамилия обязательна.";
-    if ((editPassword || editConfirmPassword) && editPassword !== editConfirmPassword) {
+    if (
+      (editPassword || editConfirmPassword) &&
+      editPassword !== editConfirmPassword
+    ) {
       errors.confirm_password = "Пароли не совпадают.";
     }
     if (Object.keys(errors).length) {
@@ -197,7 +206,9 @@ const AdminUsersPage: React.FC = () => {
         const apiErrors = err.response.data;
         const newErrors: Record<string, string> = {};
         Object.entries(apiErrors).forEach(([key, val]) => {
-          newErrors[key] = Array.isArray(val) ? (val as string[])[0] : String(val);
+          newErrors[key] = Array.isArray(val)
+            ? (val as string[])[0]
+            : String(val);
         });
         setFieldErrors(newErrors);
       } else {
@@ -221,15 +232,18 @@ const AdminUsersPage: React.FC = () => {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       {/* Кнопка «Назад» */}
-      <button
-        onClick={() => router.back()}
-        className="mb-4 inline-flex items-center gap-1 text-gray-700 hover:text-gray-900"
-      >
-        ← Назад
-      </button>
-
-      {/* Заголовок страницы */}
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Админ-панель: Пользователи</h1>
+      <div className="flex justify-center items-center px-[15px] py-[20px] bg-[#003680] mb-[20px] justify-between">
+        {/* Заголовок страницы */}
+        <h1 className="text-3xl font-bold text-white">
+          Админ-панель: Пользователи
+        </h1>
+        <button
+          onClick={() => router.back()}
+          className=" inline-flex items-center text-[20px] gap-1 text-white hover:text-gray-900"
+        >
+          ← Назад
+        </button>
+      </div>
 
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-800 border border-red-200 rounded">
@@ -274,7 +288,11 @@ const AdminUsersPage: React.FC = () => {
                 className={`
                   flex flex-col justify-between
                   border-l-4
-                  ${u.is_active_read ? "border-green-500 bg-white" : "border-red-500 bg-white"}
+                  ${
+                    u.is_active_read
+                      ? "border-green-500 bg-white"
+                      : "border-red-500 bg-white"
+                  }
                   rounded-lg shadow-md
                   overflow-hidden
                 `}
@@ -284,8 +302,10 @@ const AdminUsersPage: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <HiOutlineUser size={28} className="text-gray-700" />
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-800">{fullName}</h2>
-                      <p className="text-sm text-gray-600">@{u.username}</p>
+                      <h2 className="text-lg font-semibold text-gray-800">
+                        {fullName}
+                      </h2>
+                      <p className="text-[20px] text-gray-600">{u.username}</p>
                     </div>
                   </div>
 
@@ -335,7 +355,9 @@ const AdminUsersPage: React.FC = () => {
           <div className="relative w-full max-w-lg bg-white rounded-lg shadow-lg">
             {/* Заголовок модалки */}
             <div className="flex justify-between items-center border-b px-6 py-4">
-              <h3 className="text-xl font-semibold text-gray-800">Добавить пользователя</h3>
+              <h3 className="text-xl font-semibold text-gray-800">
+                Добавить пользователя
+              </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -363,7 +385,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.username && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.username}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.username}
+                    </p>
                   )}
                 </div>
 
@@ -374,7 +398,9 @@ const AdminUsersPage: React.FC = () => {
                   </label>
                   <select
                     value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as "ADMIN" | "USER")}
+                    onChange={(e) =>
+                      setNewRole(e.target.value as "ADMIN" | "USER")
+                    }
                     className="mt-1 block w-full px-3 py-2 bg-white text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="ADMIN">Администратор</option>
@@ -399,7 +425,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.first_name && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.first_name}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.first_name}
+                    </p>
                   )}
                 </div>
 
@@ -420,7 +448,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.last_name && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.last_name}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.last_name}
+                    </p>
                   )}
                 </div>
 
@@ -454,7 +484,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.password && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.password}
+                    </p>
                   )}
                 </div>
 
@@ -475,7 +507,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.confirm_password && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.confirm_password}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.confirm_password}
+                    </p>
                   )}
                 </div>
 
@@ -488,7 +522,10 @@ const AdminUsersPage: React.FC = () => {
                     onChange={(e) => setNewIsActive(e.target.checked)}
                     className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                   />
-                  <label htmlFor="newIsActive" className="ml-2 text-sm text-gray-700">
+                  <label
+                    htmlFor="newIsActive"
+                    className="ml-2 text-sm text-gray-700"
+                  >
                     Активен
                   </label>
                 </div>
@@ -520,7 +557,9 @@ const AdminUsersPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="relative w-full max-w-lg bg-white rounded-lg shadow-lg">
             <div className="flex justify-between items-center border-b px-6 py-4">
-              <h3 className="text-xl font-semibold text-gray-800">Редактировать пользователя</h3>
+              <h3 className="text-xl font-semibold text-gray-800">
+                Редактировать пользователя
+              </h3>
               <button
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -547,7 +586,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.username && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.username}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.username}
+                    </p>
                   )}
                 </div>
 
@@ -558,7 +599,9 @@ const AdminUsersPage: React.FC = () => {
                   </label>
                   <select
                     value={editRole}
-                    onChange={(e) => setEditRole(e.target.value as "ADMIN" | "USER")}
+                    onChange={(e) =>
+                      setEditRole(e.target.value as "ADMIN" | "USER")
+                    }
                     className="mt-1 block w-full px-3 py-2 bg-white text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="ADMIN">Администратор</option>
@@ -583,7 +626,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.first_name && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.first_name}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.first_name}
+                    </p>
                   )}
                 </div>
 
@@ -604,7 +649,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.last_name && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.last_name}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.last_name}
+                    </p>
                   )}
                 </div>
 
@@ -637,7 +684,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.password && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.password}
+                    </p>
                   )}
                 </div>
 
@@ -657,7 +706,9 @@ const AdminUsersPage: React.FC = () => {
                     }`}
                   />
                   {fieldErrors.confirm_password && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.confirm_password}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.confirm_password}
+                    </p>
                   )}
                 </div>
 
@@ -670,7 +721,10 @@ const AdminUsersPage: React.FC = () => {
                     onChange={(e) => setEditIsActive(e.target.checked)}
                     className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                   />
-                  <label htmlFor="editIsActive" className="ml-2 text-sm text-gray-700">
+                  <label
+                    htmlFor="editIsActive"
+                    className="ml-2 text-sm text-gray-700"
+                  >
                     Активен
                   </label>
                 </div>
