@@ -15,6 +15,15 @@ const LANGS = [
   { code: "kg", label: "Кыргызча" },
 ] as const;
 type LangCode = (typeof LANGS)[number]["code"];
+interface UserItem {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  patronymic_read: string;
+  role_read: "ADMIN" | "USER";
+  is_active_read: boolean;
+}
 
 // Анимация появления заголовка
 const headerVariants = {
@@ -27,7 +36,7 @@ const Header: React.FC = () => {
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-
+  const [users, setUsers] = useState<UserItem[]>([]);
   // Пока идёт загрузка данных пользователя, не рендерим шапку
   if (loading) {
     return null;
@@ -76,14 +85,14 @@ const Header: React.FC = () => {
           {/* Десктоп: кнопки справа */}
           <div className="hidden lg:flex items-center gap-4 ml-auto">
             {/* Появится только если роль ADMIN */}
-            {user?.profile?.role === "ADMIN" && (
+            {user?.profile?.role === "ADMIN" ? (
               <Link
                 href="/admin/users"
                 className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg shadow transition"
               >
                 Админ-панель
               </Link>
-            )}
+            ) : null}
             <button
               onClick={logout}
               className="inline-flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full shadow transition"
