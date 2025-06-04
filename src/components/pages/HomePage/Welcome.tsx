@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiEdit, FiCheck, FiX } from "react-icons/fi"; // +++
 import useLandHC2 from "@/hooks/useLandHC2";
 import React, { Fragment } from "react";
+import { usePrintData } from "@/providers/PrintProvider";
+import PrintSheet from "@/components/Print/PrintSheet";
 
 /* =============================================================
    CONSTANTS – styles that reproduce the look & feel of the mockup
@@ -80,6 +82,8 @@ interface FormState {
   kInflation: string;
   nds: string;   // ← новое
   nsp: string;   // ← новое
+  profit: string;        // ← НОВОЕ
+
 }
 interface CalcResult {
   rent: number;
@@ -87,7 +91,7 @@ interface CalcResult {
   total: number;      // без косвенных налогов
   ndsValue: number;
   nspValue: number;
-  grandTotal: number; // итог «всё включено»
+  grandTotal: number;   // теперь = «с рентабельностью»
   rows: { label: string; value: string }[];
 }
 type ValCoeff = { value: string; label: string; coeff: number };
@@ -223,6 +227,8 @@ const numericFields = [
   "kInflation",
   "nds",
   "nsp",
+  "profit",              // ← НОВОЕ
+
 ] as const;
 
 const initialForm: FormState = {
@@ -242,6 +248,7 @@ const initialForm: FormState = {
   kInflation: "1",
   nds: "0",      // ← «по умолчанию 0 %»
   nsp: "0",
+  profit: "",
 };
 const BASE_RATE_BY_K1: Record<string, number> = {
   bishkek: 100,
@@ -303,6 +310,7 @@ export const COMMERCIAL_USE_OPTIONS: KpOption[] = KP_ITEMS.map(
   })
 );
 const Welcome: FC = () => {
+  const { setData: setPrintData } = usePrintData();
 
   const { value: backendHC2, loading: hc2Loading, persist } = useLandHC2();
   useEffect(() => {
@@ -422,7 +430,11 @@ const Welcome: FC = () => {
     const ndsValue = total * ndsPct / 100;
     const nspValue = total * nspPct / 100;
     const grandTotal = total + ndsValue + nspValue;    // итог
+    const profitPct = parseFloat(form.profit || "0");
+    const profitValue = grandTotal * profitPct / 100;
 
+    /* финальная сумма c учётом рентабельности */
+    const finalTotal = grandTotal + profitValue;
     /* ─── 5. human-friendly вывод ───────────────────────────── */
     const fmt = (v: number) =>
       v ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом`
@@ -445,9 +457,11 @@ const Welcome: FC = () => {
       { label: "НСП (" + nspPct + " %)", value: fmt(nspValue) },
       { label: "Итого без налогов", value: fmt(total) },
       { label: "Итого с налогами", value: fmt(grandTotal) },
+        { label: "Итого с рентабельностью", value: fmt(finalTotal) }, // ← НОВОЕ
+
     ];
 
-    setResult({
+    const calc: CalcResult = {
       rent,
       landTax: Nz,
       total,
@@ -455,7 +469,11 @@ const Welcome: FC = () => {
       nspValue,
       grandTotal,
       rows,
-    });
+      
+    };
+
+    setResult(calc);       // ← как было
+    setPrintData(calc);    // ← передаём в контекст
   };
 
   const fieldClass = (f: string) =>
@@ -470,8 +488,8 @@ const Welcome: FC = () => {
      RENDER
      =========================================================== */
   return (
-    <section
-      className={containerOuter}
+    <> <section
+      className={`${containerOuter} print:hidden`}
       style={{ backgroundImage: "url('./image/background.jpg')" }}
     >
       {/* ---------- WAVE DECORATION ---------- */}
@@ -699,6 +717,8 @@ const Welcome: FC = () => {
             {[
               { id: "nds", label: "НДС, %" },
               { id: "nsp", label: "НСП, %" },
+              { id: "profit", label: "Рентабельность, %" },   // ← НОВОЕ
+
             ].map(({ id, label }) => (
               <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
                 <label htmlFor={id} className="block mb-1 text-[#0A2D8F] font-medium">
@@ -709,7 +729,7 @@ const Welcome: FC = () => {
                   id={id}
                   name={id}
                   value={String(form[id])} onChange={handleChange}
-                  placeholder="12 (стандарт)" className={fieldClass(id)}
+                  placeholder="" className={fieldClass(id)}
                 />
                 {errors[id] && (
                   <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
@@ -923,10 +943,11 @@ const Welcome: FC = () => {
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="p-4 text-left font-medium">
-                        Итог (аренда + земля + НДС + НСП)
+                        Итоговая стоимость аренды
                       </th>
                       <th className="p-4 text-right text-green-600 text-xl font-bold">
                         {result.grandTotal.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом/месяц
+
                       </th>
                     </tr>
                   </thead>
@@ -947,7 +968,12 @@ const Welcome: FC = () => {
           )}
         </AnimatePresence>
       </motion.div>
+
     </section>
+      <PrintSheet />       {/*  <–– ВНЕ <section>, ничего больше не трогаем */}
+
+    </>
+
   );
 };
 

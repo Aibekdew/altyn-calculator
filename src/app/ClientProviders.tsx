@@ -1,18 +1,15 @@
-'use client';
-import { ReactNode } from 'react';
-import { ThemeProvider } from 'next-themes';
-import ReduxProvider from '@/providers/ReduxProvider';
+"use client";
+import { ReactNode } from "react";
+import { ThemeProvider } from "next-themes";
+import ReduxProvider from "@/providers/ReduxProvider";
+import { PrintProvider } from "@/providers/PrintProvider";
 
-interface ProvidersProps {
-  children: ReactNode;
-}
-
-export default function ClientProviders({ children }: ProvidersProps) {
+export default function ClientProviders({ children }: { children: ReactNode }) {
   return (
     <ReduxProvider>
-      <ThemeProvider attribute="class">
-        {children}
-      </ThemeProvider>
+      <PrintProvider>
+        <ThemeProvider attribute="class">{children}</ThemeProvider>
+      </PrintProvider>
     </ReduxProvider>
   );
 }
