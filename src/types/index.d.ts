@@ -1,4 +1,4 @@
-// src/types.ts
+// src/types/index.d.ts
 
 export interface UserManagementSerializer {
   id: number;

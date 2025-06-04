@@ -58,7 +58,9 @@ type StringKeys =
   | "landHC"
   | "landHC2"
   | "landTaxRate"
-  | "landUse";
+  | "landUse"
+  | "nds"
+  | "nsp";
 
 interface FormState {
   [key: string]: string | boolean;
@@ -76,150 +78,138 @@ interface FormState {
   k1zone: string; // ← зона Бишкека
   landUse: string;
   kInflation: string;
+  nds: string;   // ← новое
+  nsp: string;   // ← новое
 }
-
+interface CalcResult {
+  rent: number;
+  landTax: number;
+  total: number;      // без косвенных налогов
+  ndsValue: number;
+  nspValue: number;
+  grandTotal: number; // итог «всё включено»
+  rows: { label: string; value: string }[];
+}
 type ValCoeff = { value: string; label: string; coeff: number };
 type KOption = { value: string; label: string };
 
-export const K1_OPTIONS: ValCoeff[] = [
+const SORT_BY_LABEL = <T extends { label: string }>(arr: T[]) =>
+  arr.slice().sort((a, b) => a.label.localeCompare(b.label, "ru"));
+
+export const K1_OPTIONS = SORT_BY_LABEL([
+  { value: "batken", label: "Баткенская область", coeff: 0.8 },
   { value: "bishkek", label: "г. Бишкек", coeff: 1.0 },
+  { value: "chui", label: "Чуйская область", coeff: 0.8 },
   { value: "issyk_kul", label: "Иссык-Куль (курортная зона)", coeff: 1.2 },
+  { value: "issyk_kul_reg", label: "Иссык-Кульская область", coeff: 0.8 },
+  { value: "jalal_abad", label: "Джалал-Абадская область", coeff: 0.8 },
+  { value: "naryn", label: "Нарынская область", coeff: 0.8 },
   { value: "osh_city", label: "г. Ош", coeff: 0.9 },
   { value: "osh_region", label: "Ошская область", coeff: 0.8 },
-  { value: "chui", label: "Чуйская область", coeff: 0.8 },
   { value: "talas", label: "Таласская область", coeff: 0.8 },
-  { value: "issyk_kul_reg", label: "Иссык-Кульская область", coeff: 0.8 },
-  { value: "naryn", label: "Нарынская область", coeff: 0.8 },
-  { value: "jalal_abad", label: "Джалал-Абадская область", coeff: 0.8 },
-  { value: "batken", label: "Баткенская область", coeff: 0.8 },
-];
+]);
 
-export const K2_OPTIONS: KOption[] = [
+export const K2_OPTIONS = SORT_BY_LABEL([
+  { value: "1.1", label: "удовлетворительное – требуется косметический ремонт" },
   { value: "1.0", label: "удовлетворительное – требуется капитальный ремонт" },
-  {
-    value: "1.1",
-    label: "удовлетворительное – требуется косметический ремонт",
-  },
   { value: "1.2", label: "хорошее (не требуется ремонт)" },
-];
+]);
 
-export const K3_OPTIONS: KOption[] = [
-  {
-    value: "1.3",
-    label: "наличие водопровода, горячей воды, центрального отопления",
-  },
+export const K3_OPTIONS = SORT_BY_LABEL([
+  { value: "1.0", label: "техническое обустройство отсутствует" },
   { value: "1.2", label: "наличие водопровода, центрального отопления" },
   { value: "1.1", label: "наличие водопровода" },
-  { value: "1.0", label: "техническое обустройство отсутствует" },
-];
+  { value: "1.3", label: "наличие водопровода, горячей воды, центрального отопления" },
+]);
+
 
 const K4_GROUPS: Record<number, string[]> = {
   2.5: ["Платёжные терминалы", "Банкоматы"],
   1.7: [
-    "Ресторан",
-    "Кафе",
+    "Авиакасса",
+    "Выездная касса",
     "Гостиница",
+    "Кафе",
+    "Ломбард",
     "Ночной клуб",
-    "Бильярд",
+    "Обменный пункт",
+    "Пункт приема платежей",
+    "Ресторан",
     "Сауна",
     "Бассейн",
-    "Баня",
-    "Обменный пункт",
-    "Ломбард",
     "Банковские услуги",
-    "Выездная касса",
-    "Авиакасса",
-    "Пункт приема платежей",
+    "Бильярд",
+    "Баня",
   ],
   1.6: [
-    "Размещение рекламы",
-    "Установка антенн",
-    "Оборудования для телекоммуникаций",
-    "Швейный цех",
-    "Магазин",
-    "Ларёк",
-    "Торговая точка",
     "Буфет",
-    "Салон красоты",
-    "Парикмахерская",
-    "Реставрация одежды",
-    "Салон для новобрачных",
     "Компьютерные услуги и ремонт компьютерной техники",
     "Копировальные услуги",
-    "Фото‑услуги",
+    "Ларёк",
+    "Магазин",
+    "Оборудования для телекоммуникаций",
+    "Размещение рекламы",
+    "Реставрация одежды",
+    "Салон красоты",
+    "Салон для новобрачных",
+    "Фото-услуги",
+    "Швейный цех",
+    "Торговая точка",
+    "Установка антенн",
   ],
-  1.5: ["Сооружения для ремонта и тех. обслуживания автотранспорта", "Гараж"],
-  1.4: ["Офис", "Кинотеатр", "Помещения"],
+  1.5: [
+    "Гараж",
+    "Сооружения для ремонта и тех. обслуживания автотранспорта",
+  ],
+  1.4: ["Кинотеатр", "Офис", "Помещения"],
   1.3: ["Химчистка", "Ремонт обуви"],
-  1.2: ["Автостоянка", "Склад"], // ← добавили сюда
+  1.2: ["Автостоянка", "Склад"],
   1.0: ["Производство", "Производственные услуги", "Разное"],
 };
 
-export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS).flatMap(
-  ([num, labels]) =>
+/* плоский массив + алфавитная сортировка --------------------------- */
+export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
+  .flatMap(([num, labels]) =>
     labels.map((label, idx) => ({
-      value: `${num}_${idx}`, // уникальный id
+      value: `${num}_${idx}`, // уникальный ID сохранён
       label,
       coeff: Number(num),
-    }))
-);
+    })),
+  )
+  .sort((a, b) => a.label.localeCompare(b.label, "ru")); // <- алфавит
+
+/* ------------------------------------------------------------------ */
+/* 2.  КОЭФФ. КОММЕРЧЕСКОГО ИСПОЛЬЗОВАНИЯ ЗЕМЛИ (landUse)             */
+/* ------------------------------------------------------------------ */
 
 const KP_ITEMS: [string, number][] = [
-  //  Торговля по площади
+  /* значения не меняли — просто оставили как есть */
+  ["автозаправочные станции", 10.0],
+  ["автостоянки, предприятия автосервиса", 4.5],
+  ["административные здания предприятий транспорта (аэро-, авто-, ж/д вокзалы)", 0.9],
+  ["банки, ломбарды, обменные пункты", 5.0],
+  ["воздушные линии связи и электропередачи", 0.01],
+  ["геологоразведочные, проектно-изыскательские и исследовательские работы", 0.005],
+  ["здания и сооружения горнодобывающих предприятий, грузовые станции и т.п.", 0.3],
+  ["мини-рынки, рынки, торгово-рыночные комплексы", 7.5],
+  ["нефтебазы", 1.5],
+  ["оборонно-спортивно-технические организации", 0.01],
+  ["офисы, бизнес-центры, биржи", 2.5],
+  ["предприятия гостиничной деятельности", 7.0],
+  ["предприятия игорной деятельности и дискотеки", 7.0],
+  ["предприятия общественного питания", 3.0],
+  ["предприятия промышленности, транспорта, строительства, связи и энергетики", 0.5],
+  ["предприятия сферы отдыха и развлечений, спортивно-оздоровительных услуг", 1.5],
+  ["разрабатываемые месторождения, карьеры, шахты, разрезы, золоотвалы", 0.05],
+  ["сооружения рекламы", 50.0],
+  ["сельскохозяйственные производственные здания и сооружения", 0.2],
+  ["скотные, фуражные рынки", 4.5],
+  ["учреждения науки, образования, здравоохранения, культуры, ДЮСШ", 0.3],
   ["магазины, киоски, ларьки и другие учреждения торговли (до 10 м²)", 22.5],
   ["магазины, киоски, ларьки и другие учреждения торговли (10 – 20 м²)", 16.5],
   ["магазины, киоски, ларьки и другие учреждения торговли (20 – 35 м²)", 10.5],
   ["магазины, киоски, ларьки и другие учреждения торговли (35 – 50 м²)", 7.5],
-  [
-    "магазины, киоски, ларьки и другие учреждения торговли (от 50 м² и выше)",
-    6.0,
-  ],
-
-  //  Рынки
-  ["мини-рынки, рынки, торгово-рыночные комплексы", 7.5],
-  ["скотные, фуражные рынки", 4.5],
-
-  //  Сфера услуг
-  ["предприятия общественного питания", 3.0],
-  ["предприятия гостиничной деятельности", 7.0],
-  ["банки, ломбарды, обменные пункты", 5.0],
-  ["предприятия игорной деятельности и дискотеки", 7.0],
-  ["офисы, бизнес-центры, биржи", 2.5],
-
-  //  Транспорт / логистика / топливо
-  ["автозаправочные станции", 10.0],
-  ["нефтебазы", 1.5],
-  ["автостоянки, предприятия автосервиса", 4.5],
-  [
-    "административные здания предприятий транспорта (аэро-, авто-, ж/д вокзалы)",
-    0.9,
-  ],
-
-  //  Реклама
-  ["сооружения рекламы", 50.0],
-
-  //  Прочее коммерческое использование
-  [
-    "предприятия сферы отдыха и развлечений, спортивно-оздоровительных услуг",
-    1.5,
-  ],
-  [
-    "предприятия промышленности, транспорта, строительства, связи и энергетики",
-    0.5,
-  ],
-  [
-    "здания и сооружения горнодобывающих предприятий, грузовые станции и т.п.",
-    0.3,
-  ],
-  ["разрабатываемые месторождения, карьеры, шахты, разрезы, золоотвалы", 0.05],
-  [
-    "геологоразведочные, проектно-изыскательские и исследовательские работы",
-    0.005,
-  ],
-  ["воздушные линии связи и электропередачи", 0.01],
-  ["учреждения науки, образования, здравоохранения, культуры, ДЮСШ", 0.3],
-  ["сельскохозяйственные производственные здания и сооружения", 0.2],
-  ["оборонно-спортивно-технические организации", 0.01],
+  ["магазины, киоски, ларьки и другие учреждения торговли (от 50 м² и выше)", 6.0],
 ];
 
 /* fields we validate as numbers */
@@ -231,6 +221,8 @@ const numericFields = [
   "landHC2",
   "landTaxRate",
   "kInflation",
+  "nds",
+  "nsp",
 ] as const;
 
 const initialForm: FormState = {
@@ -248,6 +240,8 @@ const initialForm: FormState = {
   k1zone: "",
   landUse: "",
   kInflation: "1",
+  nds: "0",      // ← «по умолчанию 0 %»
+  nsp: "0",
 };
 const BASE_RATE_BY_K1: Record<string, number> = {
   bishkek: 100,
@@ -309,6 +303,7 @@ export const COMMERCIAL_USE_OPTIONS: KpOption[] = KP_ITEMS.map(
   })
 );
 const Welcome: FC = () => {
+
   const { value: backendHC2, loading: hc2Loading, persist } = useLandHC2();
   useEffect(() => {
     if (!hc2Loading) {
@@ -318,12 +313,8 @@ const Welcome: FC = () => {
   }, [hc2Loading, backendHC2]);
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<null | {
-    rent: number;
-    landTax: number;
-    total: number;
-    rows: { label: string; value: string }[];
-  }>(null);
+  const [result, setResult] = useState<CalcResult | null>(null);
+
   const [isEditingHC2, setIsEditingHC2] = useState(false); // флаг «режим редактирования»
   const [draftHC2, setDraftHC2] = useState(form.landHC2);
   /* ---------- validation helpers ---------- */
@@ -391,44 +382,50 @@ const Welcome: FC = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    /* ─── 1. базовые коэффициенты ────────────────────────────── */
     const baseRate = BASE_RATE_BY_K1[form.k1] ?? 100;
+
     const k1 =
       form.k1 === "bishkek"
-        ? (BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ??
-          1)
+        ? (BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1)
         : (K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1);
+
     const k2 = parseFloat(form.k2 || "1");
     const k3 = parseFloat(form.k3 || "1");
     const k4Base = K4_OPTIONS.find((o) => o.value === form.k4)?.coeff ?? 1;
-
     const k4 = form.streetAccess ? Math.max(k4Base - 0.2, 1) : k4Base;
 
+    /* ─── 2. площади и ставки ───────────────────────────────── */
     const areaObject = parseFloat(form.areaObject || "0");
-    const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
     const areaLand = parseFloat(form.areaLand || "0");
-    const landHC2Coeff = parseFloat(form.landHC2 || "1"); // новый множитель
 
+    /* налоговые коэффициенты */
     const landHC = parseFloat(form.landHC || "0");
-    const landHC2 = form.landHC2; // ← теперь эта переменная существует
+    const landHC2Coeff = parseFloat(form.landHC2 || "1");
     const landTaxRate = parseFloat(form.landTaxRate || "0");
     const landUseCoeff =
       COMMERCIAL_USE_OPTIONS.find((o) => o.value === form.landUse)?.coeff ?? 1;
 
+    /* инфляция */
     const kInflation = parseFloat(form.kInflation || "1");
-    const Nz =
-      areaObject && landTaxRate
-        ? (landTaxRate *
-            areaObject *
-            kInflation *
-            landHC2Coeff *
-            landUseCoeff) /
-          12
-        : 0;
-    const total = rent + Nz;
 
+    /* ─── 3. собственно формулы аренды/земли ────────────────── */
+    const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
+    const Nz = areaObject && landTaxRate
+      ? (landTaxRate * areaObject * kInflation * landHC2Coeff * landUseCoeff) / 12
+      : 0;
+    const total = rent + Nz;                           // без косвенных налогов
+
+    /* ─── 4. НДС и НСП ───────────────────────────────────────── */
+    const ndsPct = parseFloat(form.nds || "0");   // проценты
+    const nspPct = parseFloat(form.nsp || "0");   // проценты
+    const ndsValue = total * ndsPct / 100;
+    const nspValue = total * nspPct / 100;
+    const grandTotal = total + ndsValue + nspValue;    // итог
+
+    /* ─── 5. human-friendly вывод ───────────────────────────── */
     const fmt = (v: number) =>
-      v
-        ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом`
+      v ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом`
         : "—";
 
     const rows = [
@@ -441,32 +438,28 @@ const Welcome: FC = () => {
       },
       {
         label: "Aз (формула)",
-        value: `(${landTaxRate} × ${landHC} × ${landHC2} × ${kInflation} × ${landUseCoeff}) / 12`,
+        value: `(${landTaxRate} × ${landHC} × ${form.landHC2} × ${kInflation} × ${landUseCoeff}) / 12`,
       },
       { label: "Aз", value: fmt(Nz) },
-      { label: "Площадь объекта", value: `${form.areaObject || "—"} м²` },
-      {
-        label: "K1",
-        value:
-          K1_OPTIONS.find((o) => o.value === form.k1)?.label.replace(
-            /^г\.\s*/,
-            "Г. "
-          ) ?? "—",
-      },
-      { label: "K2", value: form.k2 || "—" },
-      { label: "K3", value: form.k3 || "—" },
-      { label: "K4 (с учётом входа)", value: k4.toFixed(2) },
-      { label: "Площадь здания", value: `${form.areaBuilding || "—"} м²` },
-      { label: "Аренда здания", value: fmt(rent) },
-      { label: "Земельный налог (месяц)", value: fmt(Nz) },
+      { label: "НДС (" + ndsPct + " %)", value: fmt(ndsValue) },
+      { label: "НСП (" + nspPct + " %)", value: fmt(nspValue) },
+      { label: "Итого без налогов", value: fmt(total) },
+      { label: "Итого с налогами", value: fmt(grandTotal) },
     ];
 
-    setResult({ rent, landTax: Nz, total, rows });
+    setResult({
+      rent,
+      landTax: Nz,
+      total,
+      ndsValue,
+      nspValue,
+      grandTotal,
+      rows,
+    });
   };
 
   const fieldClass = (f: string) =>
-    `${inputBase} ${
-      errors[f] ? "border-red-500 focus:ring-red-400/60" : "border-transparent"
+    `${inputBase} ${errors[f] ? "border-red-500 focus:ring-red-400/60" : "border-transparent"
     }`;
 
   /* tiny counter for staggering animations */
@@ -583,11 +576,11 @@ const Welcome: FC = () => {
                   {/* если это k1 и выбрана «bishkek» — сразу под ним вставляем селект зоны */}
                   {id === "k1" && form.k1 === "bishkek" && (
                     <motion.div
-                    initial="hidden"
-                    animate="visible"
-                    variants={fadeInUp}
-                    custom={nextAi()}
-                    className="relative"
+                      initial="hidden"
+                      animate="visible"
+                      variants={fadeInUp}
+                      custom={nextAi()}
+                      className="relative"
                     >
                       <label
                         htmlFor="k1zone"
@@ -628,6 +621,32 @@ const Welcome: FC = () => {
                   )}
                 </Fragment>
               ))}
+
+              {[
+                { id: "areaObject", label: "Площадь арендуемого объекта (S)" },
+                { id: "areaLand", label: "Площадь земельного участка (S)" },
+              ].map(({ id, label }) => (
+                <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
+                  <label
+                    htmlFor={id}
+                    className="block mb-1 text-[#0A2D8F] font-medium"
+                  >
+                    {label}
+                  </label>
+                  <input
+                    type="text"
+                    id={id}
+                    name={id}
+                    value={String(form[id])}
+                    onChange={handleChange}
+                    placeholder="Введите число"
+                    className={fieldClass(id)}
+                  />
+                  {errors[id] && (
+                    <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
+                  )}
+                </motion.div>
+              ))}
               <motion.div
                 variants={fadeInUp}
                 custom={nextAi()}
@@ -653,31 +672,7 @@ const Welcome: FC = () => {
 
           {/* ===== RIGHT COLUMN ===== */}
           <div className={glassPanel}>
-            {[
-              { id: "areaObject", label: "Площадь арендуемого объекта (S)" },
-              { id: "areaLand", label: "Площадь земельного участка (S)" },
-            ].map(({ id, label }) => (
-              <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
-                <label
-                  htmlFor={id}
-                  className="block mb-1 text-[#0A2D8F] font-medium"
-                >
-                  {label}
-                </label>
-                <input
-                  type="text"
-                  id={id}
-                  name={id}
-                  value={String(form[id])}
-                  onChange={handleChange}
-                  placeholder="Введите число"
-                  className={fieldClass(id)}
-                />
-                {errors[id] && (
-                  <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
-                )}
-              </motion.div>
-            ))}
+
             {/* в правой колонке добавьте сразу после areaObject */}
             <motion.div variants={fadeInUp} custom={nextAi()}>
               <label
@@ -701,7 +696,26 @@ const Welcome: FC = () => {
                 </p>
               )}
             </motion.div>
-
+            {[
+              { id: "nds", label: "НДС, %" },
+              { id: "nsp", label: "НСП, %" },
+            ].map(({ id, label }) => (
+              <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
+                <label htmlFor={id} className="block mb-1 text-[#0A2D8F] font-medium">
+                  {label}
+                </label>
+                <input
+                  type="text"
+                  id={id}
+                  name={id}
+                  value={String(form[id])} onChange={handleChange}
+                  placeholder="12 (стандарт)" className={fieldClass(id)}
+                />
+                {errors[id] && (
+                  <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
+                )}
+              </motion.div>
+            ))}
             {/* NS (налоговая стоимость) – two aligned inputs */}
             {/* NS (налоговая стоимость) – two aligned inputs */}
             <motion.div variants={fadeInUp} custom={nextAi()}>
@@ -905,19 +919,18 @@ const Welcome: FC = () => {
               {/* Собственно таблица */}
               <div className="border-t-4 border-green-500">
                 <table className="w-full">
+                  {/* в JSX вывода результата */}
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="p-4 text-left font-medium">
-                        Стоимость аренды
+                        Итог (аренда + земля + НДС + НСП)
                       </th>
                       <th className="p-4 text-right text-green-600 text-xl font-bold">
-                        {result.total.toLocaleString("ru-RU", {
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        сом/месяц
+                        {result.grandTotal.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом/месяц
                       </th>
                     </tr>
                   </thead>
+
                   <tbody className="divide-y divide-gray-200">
                     {result.rows.map((r, i) => (
                       <tr key={i} className={i % 2 ? "bg-gray-50" : ""}>
