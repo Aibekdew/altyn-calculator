@@ -457,7 +457,7 @@ const Welcome: FC = () => {
       { label: "НСП (" + nspPct + " %)", value: fmt(nspValue) },
       { label: "Итого без налогов", value: fmt(total) },
       { label: "Итого с налогами", value: fmt(grandTotal) },
-        { label: "Итого с рентабельностью", value: fmt(finalTotal) }, // ← НОВОЕ
+      { label: "Итого с рентабельностью", value: fmt(finalTotal) }, // ← НОВОЕ
 
     ];
 
@@ -469,7 +469,7 @@ const Welcome: FC = () => {
       nspValue,
       grandTotal,
       rows,
-      
+
     };
 
     setResult(calc);       // ← как было
@@ -729,7 +729,8 @@ const Welcome: FC = () => {
                   id={id}
                   name={id}
                   value={String(form[id])} onChange={handleChange}
-                  placeholder="" className={fieldClass(id)}
+                  placeholder="Введите число"
+                  className={fieldClass(id)}
                 />
                 {errors[id] && (
                   <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
