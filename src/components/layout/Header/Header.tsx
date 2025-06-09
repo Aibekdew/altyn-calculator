@@ -9,12 +9,7 @@ import useAuth from "@/hooks/useAuth";
 import { usePrintData } from "@/providers/PrintProvider";
 
 /* ─────────── ЯЗЫКИ ─────────── */
-const LANGS = [
-  { code: "ru", label: "Русский" },
-  { code: "en", label: "English" },
-  { code: "kg", label: "Кыргызча" },
-] as const;
-type LangCode = (typeof LANGS)[number]["code"];
+
 
 const headerVariants = {
   hidden: { y: -50, opacity: 0 },
@@ -54,14 +49,7 @@ const Header: React.FC = () => {
   };
 
   /* ---------- смена языка ---------- */
-  const LANG_CODES = LANGS.map((l) => l.code) as LangCode[];
-  const changeLang = (code: LangCode) => {
-    const segments = pathname.split("/");
-    if (LANG_CODES.includes(segments[1] as LangCode)) segments[1] = code;
-    else segments.splice(1, 0, code);
-    router.push(segments.join("/") || "/");
-    setMobileOpen(false);
-  };
+
 
   /* ---------- выход ---------- */
   const handleLogout = () => {
@@ -90,10 +78,10 @@ const Header: React.FC = () => {
           {/* ---------- логотип ---------- */}
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-[20px] sm:text-[24px] md:text-[28px] font-bold text-[#003680]">
+              <h1 className="text-[20px] mb-[-2px] sm:text-[24px] md:text-[28px] font-bold text-[#003680]">
                 КЫРГЫЗАЛТЫН
               </h1>
-              <p className="text-[14px] sm:text-[16px] md:text-[14.5px] font-medium text-[#003680]">
+              <p className="text-[9.5px] mb-[4px] sm:text-[11.4px] md:text-[13.3px] font-medium text-[#003680]">
                 АЧЫК АКЦИОНЕРДИК КОМПАНИЯ
               </p>
             </div>
@@ -173,11 +161,7 @@ const Header: React.FC = () => {
               </div>
             </button>
 
-            {LANGS.map((l) => (
-              <button key={l.code} onClick={() => changeLang(l.code)} className="w-full text-left px-3 py-2 text-sm text-black bg-white/20 rounded hover:bg-white/30">
-                {l.label}
-              </button>
-            ))}
+   
 
             {user?.profile.role === "ADMIN" && (
               <Link href="/admin/users" className="block w-full text-left px-3 py-2 text-sm text-black bg-white/20 rounded hover:bg-white/30">

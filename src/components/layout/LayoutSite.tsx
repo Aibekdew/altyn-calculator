@@ -10,9 +10,6 @@ const LayoutSite: FC<ILayoutSiteProps> = ({ children }) => {
   return (
     <div className={scss.LayoutSite}>
       <div className={scss.block}>
-        {/* <div className={scss.nav}>
-          <NavBar />
-        </div> */}
         <div className={scss.children}>
           <Header />
           <main className={scss.center}>{children}</main>
