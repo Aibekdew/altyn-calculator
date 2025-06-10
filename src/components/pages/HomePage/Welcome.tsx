@@ -6,7 +6,7 @@ import useLandHC2 from "@/hooks/useLandHC2";
 import React, { Fragment } from "react";
 import { usePrintData } from "@/providers/PrintProvider";
 import PrintSheet from "@/components/Print/PrintSheet";
-
+import type { CalcResult } from "@/types/calc-result";
 /* =============================================================
    CONSTANTS – styles that reproduce the look & feel of the mockup
    ============================================================= */
@@ -83,20 +83,11 @@ interface FormState {
   nds: string;   // ← новое
   nsp: string;   // ← новое
   profit: string;        // ← НОВОЕ
+  affiliate: string;        /* <-- NEW */
 
-}
-interface CalcResult {
-  rent: number;
-  landTax: number;
-  total: number;      // без косвенных налогов
-  ndsValue: number;
-  nspValue: number;
-  grandTotal: number;   // теперь = «с рентабельностью»
-  rows: { label: string; value: string }[];
 }
 type ValCoeff = { value: string; label: string; coeff: number };
-type KOption = { value: string; label: string };
-
+type Affiliate = { value: string; label: string };
 const SORT_BY_LABEL = <T extends { label: string }>(arr: T[]) =>
   arr.slice().sort((a, b) => a.label.localeCompare(b.label, "ru"));
 
@@ -215,7 +206,38 @@ const KP_ITEMS: [string, number][] = [
   ["магазины, киоски, ларьки и другие учреждения торговли (35 – 50 м²)", 7.5],
   ["магазины, киоски, ларьки и другие учреждения торговли (от 50 м² и выше)", 6.0],
 ];
+export const AFFILIATE_BRANCHES: Affiliate[] = [
+  { value: "makmal", label: "Комбинат «Макмалзолото»" },
+  { value: "solton", label: "Рудник «Солтон-Сары»" },
+  { value: "tereksay", label: "«Терексайский рудник»" },
+  { value: "affinage", label: "«Аффинажный завод»" },
+  { value: "autotrans", label: "«Автотранспортное предприятие»" },
+  { value: "kg_kyuluu", label: "«Кыргызалтын – Курулуш»" },
+  { value: "kyrgyz_sea_resort", label: "Санаторий «Кыргызское Взморье»" },
+];
 
+/* ─── дочерние предприятия ─── */
+export const AFFILIATE_SUBSIDIARIES: Affiliate[] = [
+  { value: "kumtor", label: "ЗАО «Кумтор Голд Компани»" },
+  { value: "makmal_gold", label: "ОсОО «Макмал Голд Компани»" },
+  { value: "karabalta_gok", label: "ОсОО «Карабалтинский Горнорудный Комбинат»" },
+  { value: "chakyl", label: "ОсОО «Чакуш»" },
+  { value: "minteke", label: "ОсОО «Минтеке»" },
+  { value: "balajan", label: "ОсОО «Балажан»" },
+  { value: "orol_too", label: "ОсОО «Орол-Тоо»" },
+  { value: "shiber_too", label: "ОсОО «Шибер-Тоо»" },
+  { value: "karakala_terek", label: "ОсОО «Каракала-Терек»" },
+  { value: "chekchey", label: "ОсОО «Чекчей»" },
+  { value: "altyn_logistic", label: "ОсОО «Алтын-Логистик»" },
+  { value: "cnil", label: "ОсОО «ЦНИЛ»" },
+  { value: "mate", label: "ОсОО «МАТЭ»" },
+];
+
+/* плоский список (нужен для поиска label по value в PrintSheet) */
+export const AFFILIATE_OPTIONS: Affiliate[] = [
+  ...AFFILIATE_BRANCHES,
+  ...AFFILIATE_SUBSIDIARIES,
+];
 /* fields we validate as numbers */
 const numericFields = [
   "areaObject",
@@ -249,6 +271,7 @@ const initialForm: FormState = {
   nds: "0",      // ← «по умолчанию 0 %»
   nsp: "0",
   profit: "",
+  affiliate: "",          // NEW
 };
 const BASE_RATE_BY_K1: Record<string, number> = {
   bishkek: 100,
@@ -278,6 +301,7 @@ const NS_BY_K1: Record<string, { ns: number; hc2: number }> = {
   batken: { ns: 50, hc2: 0.3 },
 };
 
+
 /* =============================================================
    COMPONENT
    ============================================================= */
@@ -301,7 +325,21 @@ const BISHKEK_ZONE_OPTIONS: ValCoeff[] = [
   },
   { value: "zone3", label: "остальные районы г.Бишкек", coeff: 1.1 },
 ];
+const buildAddress = (k1: string, k1zone: string) => {
+  /* Название населённого пункта */
+  const cityLabel =
+    K1_OPTIONS.find(o => o.value === k1)?.label         // "г. Бишкек"
+    ?? "";
 
+  /* Для Бишкека добавляем зону, если она выбрана */
+  if (k1 === "bishkek" && k1zone) {
+    const zoneLabel =
+      BISHKEK_ZONE_OPTIONS.find(o => o.value === k1zone)?.label
+      ?? "";
+    if (zoneLabel) return `${cityLabel}, ${zoneLabel}`;
+  }
+  return cityLabel;   // для всех остальных городов
+};
 export const COMMERCIAL_USE_OPTIONS: KpOption[] = KP_ITEMS.map(
   ([label, coeff]) => ({
     label, // что видит пользователь
@@ -339,17 +377,23 @@ const Welcome: FC = () => {
     return msg === "";
   };
 
+  // === validateForm()
   const validateForm = () => {
     const newErr: Record<string, string> = {};
-    numericFields.forEach((f) => {
+
+    /* числовые поля – как было */
+    numericFields.forEach(f => {
       if (!validateField(f, String(form[f]), true))
-        newErr[f] = !String(form[f]).trim()
-          ? "Заполните поле"
-          : "Введите число";
+        newErr[f] = !String(form[f]).trim() ? "Заполните поле" : "Введите число";
     });
+
+    /* --- новый select --- */
+    if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
+
     setErrors(newErr);
     return !Object.keys(newErr).length;
   };
+
 
   // ─── handleChange ──────────────────────────────────────────────────────
   const handleChange = (
@@ -460,74 +504,113 @@ const Welcome: FC = () => {
       { label: "Итого с рентабельностью", value: fmt(finalTotal) }, // ← НОВОЕ
 
     ];
+    const addressPart = buildAddress(form.k1, form.k1zone);
+    const description =
+      "Расчёт стоимости арендной (минимальной) платы за пользование помещением, расположенным по адресу " +
+      (addressPart ? addressPart : "—");
+const calc: CalcResult = {
+  rent,
+  landTax: Nz,
+  total,
+  ndsValue,
+  nspValue,
+  grandTotal,
+  finalTotal,           // ← НОВОЕ
+  rows,
+  affiliate: form.affiliate,
+  description,
+};
 
-    const calc: CalcResult = {
-      rent,
-      landTax: Nz,
-      total,
-      ndsValue,
-      nspValue,
-      grandTotal,
-      rows,
-
-    };
-
-    setResult(calc);       // ← как было
-    setPrintData(calc);    // ← передаём в контекст
+    setResult(calc);
+    setPrintData(calc);
   };
 
   const fieldClass = (f: string) =>
     `${inputBase} ${errors[f] ? "border-red-500 focus:ring-red-400/60" : "border-transparent"
     }`;
 
-  /* tiny counter for staggering animations */
   let ai = 0;
   const nextAi = () => ai++;
 
-  /* ===========================================================
-     RENDER
-     =========================================================== */
   return (
     <> <section
       className={`${containerOuter} print:hidden`}
       style={{ backgroundImage: "url('./image/background.jpg')" }}
     >
-      {/* ---------- WAVE DECORATION ---------- */}
-      <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
-        <svg
-          className="w-5 h-5 text-gray-500"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </div>
-      {/* ---------- FORM ---------- */}
+
       <motion.div
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
         className="w-full max-w-7xl mx-auto"
       >
+        <motion.div variants={fadeInUp} custom={nextAi()} className="relative">
+          <label htmlFor="affiliate" className="block mb-1 text-[#0A2D8F] font-medium">
+            Филиал / дочернее предприятие
+          </label>
+
+          <select
+            id="affiliate"
+            name="affiliate"
+            value={form.affiliate}
+            onChange={handleChange}
+            className={`${selectBase} transition-colors duration-300
+    ${errors.affiliate && "border-red-500 focus:ring-red-400/60"}`}
+          >
+            <option value="">— выберите из списка —</option>
+
+            {/* ------ Филиалы ------ */}
+            <optgroup label="Филиалы">
+              {AFFILIATE_BRANCHES.map(o => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
+
+            {/* ------ Дочерние предприятия ------ */}
+            <optgroup label="Дочерние предприятия">
+              {AFFILIATE_SUBSIDIARIES.map(o => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+
+
+          {/* стрелочка-иконка */}
+          <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {/* плавное появление ошибки */}
+          <AnimatePresence>
+            {errors.affiliate && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="text-red-500 text-sm mt-1 "
+              >
+                {errors.affiliate}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </motion.div>
         <motion.form
           variants={fadeInUp}
           custom={nextAi()}
           onSubmit={handleSubmit}
           className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8"
         >
-          {/* ===== LEFT COLUMN ===== */}
           <div className={glassPanel + " lg:h-full"}>
             <div className="flex flex-col gap-6 flex-1">
-              {" "}
-              {/* ➋ flex-1 – тянется */}
               {[
-                // объединяем всё в один map
                 {
                   id: "k1",
                   label: "Населённый пункт (КН)",
@@ -690,6 +773,8 @@ const Welcome: FC = () => {
 
           {/* ===== RIGHT COLUMN ===== */}
           <div className={glassPanel}>
+            {/* =====  ВЫБОР ФИЛИАЛА / КОМПАНИИ ===== */}
+
 
             {/* в правой колонке добавьте сразу после areaObject */}
             <motion.div variants={fadeInUp} custom={nextAi()}>
@@ -714,29 +799,7 @@ const Welcome: FC = () => {
                 </p>
               )}
             </motion.div>
-            {[
-              { id: "nds", label: "НДС, %" },
-              { id: "nsp", label: "НСП, %" },
-              { id: "profit", label: "Рентабельность, %" },   // ← НОВОЕ
 
-            ].map(({ id, label }) => (
-              <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
-                <label htmlFor={id} className="block mb-1 text-[#0A2D8F] font-medium">
-                  {label}
-                </label>
-                <input
-                  type="text"
-                  id={id}
-                  name={id}
-                  value={String(form[id])} onChange={handleChange}
-                  placeholder="Введите число"
-                  className={fieldClass(id)}
-                />
-                {errors[id] && (
-                  <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
-                )}
-              </motion.div>
-            ))}
             {/* NS (налоговая стоимость) – two aligned inputs */}
             {/* NS (налоговая стоимость) – two aligned inputs */}
             <motion.div variants={fadeInUp} custom={nextAi()}>
@@ -861,7 +924,29 @@ const Welcome: FC = () => {
                 </p>
               )}
             </motion.div>
+            {[
+              { id: "nds", label: "НДС, %" },
+              { id: "nsp", label: "НСП, %" },
+              { id: "profit", label: "Рентабельность, %" },   // ← НОВОЕ
 
+            ].map(({ id, label }) => (
+              <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
+                <label htmlFor={id} className="block mb-1 text-[#0A2D8F] font-medium">
+                  {label}
+                </label>
+                <input
+                  type="text"
+                  id={id}
+                  name={id}
+                  value={String(form[id])} onChange={handleChange}
+                  placeholder="Введите число"
+                  className={fieldClass(id)}
+                />
+                {errors[id] && (
+                  <p className="text-red-500 text-sm mt-1">{errors[id]}</p>
+                )}
+              </motion.div>
+            ))}
             {/* land use coefficient */}
             <motion.div
               className="relative"
@@ -947,7 +1032,7 @@ const Welcome: FC = () => {
                         Итоговая стоимость аренды
                       </th>
                       <th className="p-4 text-right text-green-600 text-xl font-bold">
-                        {result.grandTotal.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом/месяц
+                        {result.finalTotal.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом/месяц
 
                       </th>
                     </tr>

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LogOut, Printer } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
 import { usePrintData } from "@/providers/PrintProvider";
+import ProfileDropdown from "../ProfileDropdown";
 
 /* ─────────── ЯЗЫКИ ─────────── */
 
@@ -59,13 +60,17 @@ const Header: React.FC = () => {
       .split(";")
       .forEach(
         (c) =>
-          (document.cookie =
-            c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/")),
+        (document.cookie =
+          c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/")),
       );
     logout();
     window.location.href = "/login";
   };
 
+    const btn =
+    "inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full text-sm font-medium " +
+    "transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-400/60";
+    
   return (
     <>
       <motion.header
@@ -89,95 +94,85 @@ const Header: React.FC = () => {
           </div>
 
           {/* ---------- desktop zone ---------- */}
-          <div className="hidden lg:flex items-center gap-4 ml-auto">
-            {/* ---------- ПЕЧАТЬ ---------- */}
-            <div className="relative">
-              <button
-                onClick={handlePrint}
-                disabled={!printData}
-                className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg shadow
-                  ${printData
-                    ? "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
-              >
-                <Printer size={18} />
-                <span className="text-sm">Печать</span>
-              </button>
+         <div className="hidden lg:flex items-center gap-3">
+            {/* печать */}
+            <button
+              onClick={handlePrint}
+              disabled={!printData}
+              className={`${btn} ${
+                printData
+                  ? "bg-gray-100 hover:bg-gray-200 text-gray-800"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <Printer size={18} />
+              Печать
+            </button>
 
-              {/* tooltip */}
-              <AnimatePresence>
-                {showTip && (
-                  <motion.div
-                    variants={tipAnim}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="absolute -left-4 top-11 w-max bg-black text-white text-xs rounded px-3 py-1"
-                  >
-                    Сначала выполните&nbsp;расчёт
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
+            {/* админ-панель */}
             {user?.profile.role === "ADMIN" && (
-              <Link href="/admin/users" className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg shadow">
+              <Link
+                href="/admin/users"
+                className={`${btn} bg-gray-800 hover:bg-gray-900 text-white`}
+              >
                 Админ-панель
               </Link>
             )}
 
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full shadow"
-            >
-              <LogOut size={18} />
-              <span className="text-sm">Выйти</span>
-            </button>
+            {/* профиль + выход (выпадающее меню) */}
+            <ProfileDropdown
+              user={user}
+              onLogout={handleLogout}
+              showTip={showTip}
+            />
           </div>
 
-          {/* ---------- mobile burger ---------- */}
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden p-2 ml-auto">
+          {/* ---------- MOBILE burger ---------- */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="lg:hidden p-2 ml-2"
+          >
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
-        {/* ---------- mobile menu ---------- */}
-        {mobileOpen && (
-          <div className="lg:hidden bg-white/90 backdrop-blur-md border-t border-white/30 shadow-inner px-4 py-2 space-y-2 rounded-b-xl">
-            <button
-              onClick={() => {
-                handlePrint();
-                setMobileOpen(false);
-              }}
-              disabled={!printData}
-              className={`w-full text-left px-3 py-2 text-sm rounded
-                ${printData
-                  ? "bg-white/20 text-black hover:bg-white/30"
-                  : "bg-white/10 text-gray-400 cursor-not-allowed"}`}
+        {/* ---------- MOBILE menu ---------- */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="lg:hidden bg-white/95 backdrop-blur-md border-t border-white/40 shadow-inner"
             >
-              <div className="inline-flex items-center gap-2">
-                <Printer size={16} />
-                <span>Печать</span>
+              <div className="px-4 py-3 space-y-3">
+                {/* профиль + печать + выход — уже внутри компонента */}
+                <ProfileDropdown
+                  user={user}
+                  onLogout={handleLogout}
+                  mobile
+                  onPrint={handlePrint}
+                  canPrint={!!printData}
+                />
+
+                {/* админ-панель */}
+                {user?.profile.role === "ADMIN" && (
+                  <Link
+                    href="/admin/users"
+                    onClick={() => setMobileOpen(false)}
+                    className="block w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm"
+                  >
+                    Админ-панель
+                  </Link>
+                )}
               </div>
-            </button>
-
-   
-
-            {user?.profile.role === "ADMIN" && (
-              <Link href="/admin/users" className="block w-full text-left px-3 py-2 text-sm text-black bg-white/20 rounded hover:bg-white/30">
-                Админ-панель
-              </Link>
-            )}
-
-            <button onClick={handleLogout} className="w-full text-left px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full">
-              Выйти
-            </button>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.header>
 
       {/* отступ, чтобы контент не уползал под шапку */}
-      <div className="h-[72px] lg:h-[56px]" />
+      <div className="h-[72px] lg:h-[60px]" />
     </>
   );
 };

@@ -1,15 +1,19 @@
-/** Единый тип, чтобы импортировать без циклических зависимостей */
+/** Одна – единая – версия интерфейса для всего проекта */
 export interface CalcRow {
   label: string;
   value: string;
 }
 
 export interface CalcResult {
-  rent: number;       // арендная плата за помещение
-  landTax: number;    // земельный налог (Az)
-  total: number;      // rent + landTax
-  ndsValue: number;   // сумма НДС
-  nspValue: number;   // сумма НСП
-  grandTotal: number; // финал (всё включено)
+  rent: number;
+  landTax: number;
+  total: number;
+  ndsValue: number;
+  nspValue: number;
+  grandTotal: number;
   rows: CalcRow[];
+  finalTotal: number;   // ← ДОБАВИЛИ!
+
+  affiliate?: string;     // выбранный филиал
+  description?: string;   // произвольный текст (адрес-описание)
 }

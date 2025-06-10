@@ -1,4 +1,5 @@
 // src/utils/api.ts
+"use client";
 
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 

@@ -23,13 +23,23 @@ $radius: 16px;
 .background {
   position: absolute;
   inset: 0;
-  background: url("../../../public/image/loginimg.jpg")
-    center/cover no-repeat;
-  background-attachment: fixed;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transition: transform 0.2s ease-out;
   will-change: transform;
   z-index: 0;
 }
+// .background {
+//   position: absolute;
+//   inset: 0;
+//   background: url("../../../public/image/loginimg.jpg")
+//     center/cover no-repeat;
+//   background-attachment: fixed;
+//   transition: transform 0.2s ease-out;
+//   will-change: transform;
+//   z-index: 0;
+// }
 
 .error {
   color: #ff4d4f;
@@ -55,11 +65,9 @@ $radius: 16px;
   padding: 40px 32px;
   border-radius: $radius;
   backdrop-filter: blur(15px);
-  background: linear-gradient(
-    135deg,
-    $card-bg 0%,
-    rgba(33, 51, 83, 0.049) 100%
-  );
+  background: linear-gradient(135deg,
+      $card-bg 0%,
+      rgba(33, 51, 83, 0.049) 100%);
   border: 1px solid $card-border;
   box-shadow: 0 8px 32px $card-shadow;
   display: flex;
@@ -82,6 +90,7 @@ $radius: 16px;
 
   .kyrgyz_text {
     margin-top: 8px;
+
     h1 {
       color: $text-color;
       font-size: 2.5rem;
@@ -110,9 +119,11 @@ $radius: 16px;
     .label {
       color: $neon-blue;
     }
+
     .underline {
       transform: scaleX(1);
     }
+
     .emailIcon,
     .lockIcon,
     .toggleIcon {
@@ -179,12 +190,10 @@ $radius: 16px;
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.25),
-      transparent
-    );
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.25),
+        transparent);
     left: -100%;
     transition: left 0.5s;
   }
@@ -193,8 +202,10 @@ $radius: 16px;
     &::before {
       left: 100%;
     }
+
     transform: translateY(-2px);
   }
+
   &:active {
     transform: translateY(0);
   }
@@ -206,6 +217,7 @@ $radius: 16px;
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
