@@ -76,14 +76,14 @@ const LogIn: FC = () => {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-        <video
+        {/* <video
     className={scss.background}
     src="/image/backvideo.mp4"       // или путь: public/backvideo.mp4
     autoPlay
     muted
     loop
     playsInline                     // для iOS
-  />
+  /> */}
       <div
         className={scss.background}
         style={{
