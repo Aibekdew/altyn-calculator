@@ -89,7 +89,7 @@ const PrintSheet: React.FC = () => {
 
         {/* --- Утверждаю --- */}
         <div>
-          <p>Утверждаю:&nbsp;Мусаева&nbsp;М.&nbsp;Э.</p>
+          <p>Утверждаю:&nbsp;Мусаева&nbsp;Э.&nbsp;М.</p>
           <p className="mt-2">Подпись: ______________</p>
         </div>
       </div>
