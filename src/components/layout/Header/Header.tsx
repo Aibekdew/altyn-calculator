@@ -112,7 +112,7 @@ const Header: React.FC = () => {
             {/* админ-панель */}
             {user?.profile.role === "ADMIN" && (
               <Link
-                href="/admin/users"
+                href="/adminpanel/users"
                 className={`${btn} bg-gray-800 hover:bg-gray-900 text-white`}
               >
                 Админ-панель
@@ -158,7 +158,7 @@ const Header: React.FC = () => {
                 {/* админ-панель */}
                 {user?.profile.role === "ADMIN" && (
                   <Link
-                    href="/admin/users"
+                    href="/adminpanel/users"
                     onClick={() => setMobileOpen(false)}
                     className="block w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm"
                   >
