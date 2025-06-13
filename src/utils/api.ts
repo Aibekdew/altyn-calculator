@@ -3,7 +3,7 @@
 
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://rent.kyrgyzaltyn.kg/api/";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -14,7 +14,9 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as AxiosRequestConfig & {
+      _retry?: boolean;
+    };
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
@@ -42,12 +44,13 @@ api.interceptors.response.use(
   }
 );
 
-
 // 2) Если получили 401, пробуем обновить токен через refresh
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as AxiosRequestConfig & {
+      _retry?: boolean;
+    };
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
