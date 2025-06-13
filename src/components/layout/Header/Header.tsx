@@ -11,7 +11,6 @@ import ProfileDropdown from "../ProfileDropdown";
 
 /* ─────────── ЯЗЫКИ ─────────── */
 
-
 const headerVariants = {
   hidden: { y: -50, opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
@@ -33,7 +32,7 @@ const Header: React.FC = () => {
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
 
-  const { data: printData } = usePrintData();     // ★ результат из контекста
+  const { data: printData } = usePrintData(); // ★ результат из контекста
   const [showTip, setShowTip] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -51,7 +50,6 @@ const Header: React.FC = () => {
 
   /* ---------- смена языка ---------- */
 
-
   /* ---------- выход ---------- */
   const handleLogout = () => {
     localStorage.clear();
@@ -60,17 +58,21 @@ const Header: React.FC = () => {
       .split(";")
       .forEach(
         (c) =>
-        (document.cookie =
-          c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/")),
+          (document.cookie = c
+            .replace(/^ +/, "")
+            .replace(
+              /=.*/,
+              "=;expires=" + new Date(0).toUTCString() + ";path=/"
+            ))
       );
     logout();
     window.location.href = "/login";
   };
 
-    const btn =
+  const btn =
     "inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full text-sm font-medium " +
     "transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-400/60";
-    
+
   return (
     <>
       <motion.header
@@ -86,15 +88,19 @@ const Header: React.FC = () => {
               <h1 className="text-[20px] mb-[-2px] sm:text-[24px] md:text-[28px] font-bold text-[#003680]">
                 КЫРГЫЗАЛТЫН
               </h1>
-              <p className="text-[9.5px] mb-[4px] sm:text-[11.4px] md:text-[13.3px] font-medium text-[#003680]">
-                АЧЫК АКЦИОНЕРДИК КОМПАНИЯ
+              <p className="text-[10.8px] mb-[4px] sm:text-[13.4px] md:text-[15.3px] font-medium text-[#003680]">
+                АЧЫК АКЦИОНЕРДИК КООМУ
               </p>
             </div>
-            <img src="/image/logo.png" alt="logo" className="w-16 sm:w-20 md:w-24" />
+            <img
+              src="/image/logo.png"
+              alt="logo"
+              className="w-16 sm:w-20 md:w-24"
+            />
           </div>
 
           {/* ---------- desktop zone ---------- */}
-         <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             {/* печать */}
             <button
               onClick={handlePrint}

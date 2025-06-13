@@ -1,96 +1,105 @@
 /* ------------------------------------------------------------------
  * components/Print/PrintSheet.tsx
- * Отрисовывается только в режиме печати (`print:block`).
- * Шрифт по-умолчанию — 14 pt, поэтому Word «схватывает» размеры один-к-одному.
+ * Печать үчүн даяр барак.
  * ------------------------------------------------------------------ */
 
 "use client";
 import React from "react";
 import { usePrintData } from "@/providers/PrintProvider";
 import { AFFILIATE_OPTIONS } from "../pages/HomePage/Welcome";
-import useAuth from "@/hooks/useAuth";           // ★ NEW
+import useAuth from "@/hooks/useAuth";
 
 const PrintSheet: React.FC = () => {
   const { data } = usePrintData();
-  const { user }  = useAuth();                  // ★ NEW
+  const { user } = useAuth();
 
   if (!data) return null;
 
-  /* ——— название филиала (может быть пустым) ——— */
+  /* ────────── Филиал ────────── */
   const affiliateLabel =
     data.affiliate &&
-    (AFFILIATE_OPTIONS.find(o => o.value === data.affiliate)?.label ??
+    (AFFILIATE_OPTIONS.find((o) => o.value === data.affiliate)?.label ??
       data.affiliate);
-  const execLast  = user?.last_name?.trim()        || "";
-  const execFirst = user?.first_name?.trim()       || "";
-  const execPatr  = user?.profile?.patronymic?.trim() || "";
+
+  /* ────────── Описание объекта (обрезаем «расположенным по адресу …») ────────── */
+  const rawDescription = data.description ?? "";
+  const description = rawDescription
+    .replace(/,\s*располож.*$/i, "") // убираем хвост с адресом
+    .trim();
+
+  /* ────────── Исполнитель ────────── */
+  const execLast = user?.last_name?.trim() || "";
+  const execFirst = user?.first_name?.trim() || "";
+  const execPatr = user?.profile?.patronymic?.trim() || "";
 
   const executorLabel = execLast
-    ? `${execLast} ${execFirst.charAt(0).toUpperCase()}. ${execPatr.charAt(0).toUpperCase()}.`
+    ? `${execLast} ${execFirst.charAt(0).toUpperCase()}. ${execPatr
+        .charAt(0)
+        .toUpperCase()}.`
     : "____________________________";
+
   return (
     <div
       id="print-area"
-      /* 170 mm =  480 pt  — остаётся 20 mm по краям A4 (210 mm)   */
       className="
         hidden print:block
         w-[170mm] mx-auto
-        font-[14pt] leading-tight
-         text-[14px]          /* верхний отступ почти нулевой */
+        font-[14pt] leading-tight text-[14px]
       "
     >
-      {/* ─────────── Описание объекта ─────────── */}
-      {data.description && (
-        <p className="whitespace-pre-wrap text-center mb-4 text-[14px] ">
-          {data.description}
+      {/* ─────────── Описание ─────────── */}
+      {description && (
+        <p className="whitespace-pre-wrap text-center text-[14px] font-bold mb-4">
+          {description}
         </p>
       )}
 
       {/* ─────────── Название филиала ─────────── */}
       {affiliateLabel && (
-        <p className="text-center font-medium mb-2 text-[14px] ">{affiliateLabel}</p>
+        <p className="text-center text-[14px] font-medium mb-2">
+          {affiliateLabel}
+        </p>
       )}
 
-      {/* ─────────── Заголовки ─────────── */}
+      {/* ─────────── Заголовок и итог ─────────── */}
       <h1 className="text-center  font-bold uppercase tracking-wide mb-1 text-[14px] ">
         расчёт арендной платы
       </h1>
       <p className="text-center font-semibold mb-6 text-[14px] ">
         Итоговая стоимость:&nbsp;
-        {data.finalTotal.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}
+        {data.finalTotal.toLocaleString("ru-RU", {
+          maximumFractionDigits: 2,
+        })}
         &nbsp;сом&nbsp;/ месяц
       </p>
 
-      {/* ─────────── Таблица результатов ─────────── */}
-      <table className="w-full border border-black border-collapse text-[14px] ">
+      {/* ─────────── Таблица ─────────── */}
+      <table className="w-full border border-black border-collapse">
         <thead>
-          <tr className="bg-[#003680] text-white text-[14px] ">
-            <th className="w-[65%] text-left font-semibold p-2 text-[14px] ">Показатель</th>
-            <th className="text-right font-semibold p-2 text-[14px] ">Значение</th>
+          <tr className="bg-[#003680] text-white">
+            <th className="w-[65%] text-left font-semibold p-2">Показатель</th>
+            <th className="text-right font-semibold p-2">Значение</th>
           </tr>
         </thead>
         <tbody>
           {data.rows.map((r, i) => (
             <tr key={i} className={i % 2 ? "bg-gray-50" : "bg-white"}>
-              <td className="p-2 align-top text-[14px] ">{r.label}</td>
-              <td className="p-2 text-right whitespace-nowrap text-[14px] ">{r.value}</td>
+              <td className="p-2 align-top">{r.label}</td>
+              <td className="p-2 text-right whitespace-nowrap">{r.value}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
       {/* ─────────── Подписи ─────────── */}
-        <div className="flex justify-between mt-10">
+      <div className="flex font-bold justify-between mt-10 items-center">
+        <div>
+          <p className="mb-[2px]">Начальник УЭАиП</p>
+          <p className="mt-2">ОАО «Кыргызалтын»</p>
+        </div>
         {/* --- Исполнитель --- */}
         <div>
-          <p>Исполнитель:&nbsp;{executorLabel}</p>
-          <p className="mt-2">Подпись: ______________</p>
-        </div>
-
-        {/* --- Утверждаю --- */}
-        <div>
-          <p>Утверждаю:&nbsp;Мусаева&nbsp;Э.&nbsp;М.</p>
-          <p className="mt-2">Подпись: ______________</p>
+          <p>Мусаева&nbsp;Э.&nbsp;М.</p>
         </div>
       </div>
     </div>
