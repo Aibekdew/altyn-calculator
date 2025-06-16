@@ -85,6 +85,7 @@ interface FormState {
   profit: string; // ← НОВОЕ
   affiliate: string;
   objectName: string;
+  popBand: string;
 }
 type ValCoeff = { value: string; label: string; coeff: number };
 type Affiliate = { value: string; label: string };
@@ -178,7 +179,6 @@ export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
 /* ------------------------------------------------------------------ */
 /* 2.  КОЭФФ. КОММЕРЧЕСКОГО ИСПОЛЬЗОВАНИЯ ЗЕМЛИ (landUse)             */
 /* ------------------------------------------------------------------ */
-
 const KP_ITEMS: [string, number][] = [
   /* значения не меняли — просто оставили как есть */
   ["автозаправочные станции", 10.0],
@@ -289,12 +289,13 @@ const initialForm: FormState = {
   areaBuilding: "",
   k1zone: "",
   landUse: "",
-  kInflation: "1",
+  kInflation: "1.108",
   nds: "0", // ← «по умолчанию 0 %»
   nsp: "0",
   profit: "",
   affiliate: "",
   objectName: "",
+  popBand: "",
 };
 const BASE_RATE_BY_K1: Record<string, number> = {
   bishkek: 100,
@@ -322,6 +323,77 @@ const NS_BY_K1: Record<string, { ns: number; hc2: number }> = {
   naryn: { ns: 50, hc2: 0.4 },
   jalal_abad: { ns: 100, hc2: 0.6 },
   batken: { ns: 50, hc2: 0.3 },
+};
+
+const getBandsForRegion = (region: string) =>
+  POP_BANDS.filter(
+    (b) =>
+      NS_BY_REGION_POP[region]?.[
+        b.value as keyof (typeof NS_BY_REGION_POP)[string]
+      ] !== undefined
+  );
+
+/** БНС (сом/м²) по регионам и диапазонам численности населения
+ *  источник — ст. 404 НК КР (ред. 2023) */
+
+/** Калк санынын диапазондору */
+export const POP_BANDS = [
+  { value: "p5", label: "0 – 5 миң" },
+  { value: "p10", label: "5 – 10 миң" },
+  { value: "p20", label: "10 – 20 миң" },
+  { value: "p50", label: "20 – 50 миң" },
+  { value: "p100", label: "50 – 100 миң" },
+  { value: "p200", label: "100 – 200 миң" },
+  { value: "p500", label: "200 – 500 миң" },
+  { value: "p500+", label: "500 миң ↑" },
+] as const;
+
+/** БНС (сом/м²) – регион + диапазон */
+export const NS_BY_REGION_POP: Record<
+  string, // region value
+  Partial<Record<(typeof POP_BANDS)[number]["value"], number>>
+> = {
+  batken: { p5: 90, p10: 140, p20: 150, p50: 170, p100: 170 },
+  jalal_abad: { p5: 120, p10: 160, p20: 180, p50: 200, p100: 210, p200: 240 },
+  issyk_kul: { p5: 120, p10: 160, p20: 180, p50: 200, p100: 210 },
+  naryn: { p5: 100, p10: 140, p20: 160, p50: 170, p100: 180 },
+  osh_region: {
+    p5: 130,
+    p10: 160,
+    p20: 180,
+    p50: 200,
+    p100: 230,
+    p200: 240,
+    p500: 260,
+  },
+  talas: { p5: 110, p10: 150, p20: 170, p50: 190 },
+  chui: {
+    p5: 120,
+    p10: 160,
+    p20: 180,
+    p50: 200,
+    p100: 230,
+    p200: 240,
+    p500: 290,
+  },
+  bishkek: {
+    p5: 120,
+    p10: 160,
+    p20: 180,
+    p50: 200,
+    p100: 230,
+    p200: 240,
+    p500: 290,
+  },
+  osh_city: {
+    p5: 130,
+    p10: 160,
+    p20: 180,
+    p50: 200,
+    p100: 230,
+    p200: 240,
+    p500: 260,
+  },
 };
 
 /* =============================================================
@@ -370,7 +442,6 @@ export const COMMERCIAL_USE_OPTIONS: KpOption[] = KP_ITEMS.map(
 );
 const Welcome: FC = () => {
   const { setData: setPrintData } = usePrintData();
-
   const { value: backendHC2, loading: hc2Loading, persist } = useLandHC2();
   useEffect(() => {
     if (!hc2Loading) {
@@ -381,7 +452,7 @@ const Welcome: FC = () => {
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<CalcResult | null>(null);
-
+  const bandsToShow = form.k1 ? getBandsForRegion(form.k1) : POP_BANDS;
   const resultRef = useRef<HTMLDivElement>(null);
 
   // Натыйжа даяр болгондо баракты жылма жылдырып көрсөтүү
@@ -428,6 +499,9 @@ const Welcome: FC = () => {
           : "Введите число";
     });
 
+    /* --- NEW: популяцияны текшерүү --- */
+    if (!form.popBand) newErr.popBand = "Выберите диапазон населения";
+
     /* --- новый select --- */
     if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
 
@@ -435,7 +509,6 @@ const Welcome: FC = () => {
     return !Object.keys(newErr).length;
   };
 
-  // ─── handleChange ──────────────────────────────────────────────────────
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -445,28 +518,42 @@ const Welcome: FC = () => {
         ? e.target.checked
         : e.target.value;
 
-    /* ---------- 1. k1   (населённый пункт) ---------------------------- */
+    /* ────────────────────────────────────────────────
+     1. Выбрали населённый пункт (k1)
+     ──────────────────────────────────────────────── */
     if (name === "k1" && typeof val === "string") {
-      const preset = NS_BY_K1[val]; // базовая НС и коэффициент НК
+      // берём «самый высокий» диапазон населения для региона
+      const bandsForRegion = getBandsForRegion(val);
+      const autoBand = bandsForRegion[bandsForRegion.length - 1]?.value || "";
+
+      // ищем БНС (landHC) для региона + диапазона
+      const nsVal =
+        NS_BY_REGION_POP[val]?.[
+          autoBand as keyof (typeof NS_BY_REGION_POP)[string]
+        ] ?? "";
+
       setForm((prev) => ({
         ...prev,
-        k1: val, // обязательно сохраняем выбор!
-        landHC: preset ? String(preset.ns) : prev.landHC,
-        landHC2: preset ? String(preset.hc2) : prev.landHC2,
+        k1: val, // выбранный населённый пункт
+        popBand: autoBand, // авто-диапазон населения
+        landHC: nsVal ? String(nsVal) : prev.landHC, // БНС
       }));
-      if (preset) {
-        setDraftHC2(String(preset.hc2)); // обновляем маленький инпут
-        setErrors((p) => ({ ...p, landHC: "", landHC2: "" }));
-      }
-    } else {
-      /* ---------- 2. все остальные поля --------------------------------- */
-      setForm((prev) => ({ ...prev, [name]: val }));
+
+      if (nsVal) setErrors((p) => ({ ...p, landHC: "" }));
+      setResult(null);
+      return;
     }
 
-    /* ---------- 3. побочные действия ---------------------------------- */
+    /* ────────────────────────────────────────────────
+     2. Все остальные поля
+     ──────────────────────────────────────────────── */
+    setForm((prev) => ({ ...prev, [name]: val }));
     setResult(null);
-    if (numericFields.includes(name as any))
+
+    // моментальная проверка числовых полей
+    if (numericFields.includes(name as any)) {
       validateField(name as (typeof numericFields)[number], String(val));
+    }
   };
 
   /* ---------- calculations ---------- */
@@ -780,7 +867,7 @@ const Welcome: FC = () => {
                         </svg>
                       </div>
                     </motion.div>
-                    {/* если это k1 и выбрана «bishkek» — сразу под ним вставляем селект зоны */}
+                    {/* --- Местоположение (зоны г.Бишкек) --- */}
                     {id === "k1" && form.k1 === "bishkek" && (
                       <motion.div
                         initial="hidden"
@@ -795,6 +882,7 @@ const Welcome: FC = () => {
                         >
                           Местоположение объекта (зоны г.Бишкек)
                         </label>
+
                         <select
                           id="k1zone"
                           name="k1zone"
@@ -802,13 +890,14 @@ const Welcome: FC = () => {
                           onChange={handleChange}
                           className={selectBase}
                         >
-                          <option value="">выберите из списка</option>
+                          <option value="">выберите зону</option>
                           {BISHKEK_ZONE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
                             </option>
                           ))}
                         </select>
+
                         <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
                           <svg
                             className="w-5 h-5 text-gray-500"
@@ -914,7 +1003,7 @@ const Welcome: FC = () => {
                   htmlFor="landHC"
                   className="block mb-1 text-[#0A2D8F] font-medium"
                 >
-                  NS (налоговая стоимость м², сом)
+                  БНС (налоговая стоимость м², сом)
                 </label>
 
                 <div className="flex gap-3 items-start">
@@ -1007,7 +1096,71 @@ const Welcome: FC = () => {
                   <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
                 )}
               </motion.div>
+              <motion.div variants={fadeInUp} custom={nextAi()}>
+                <label
+                  htmlFor="kInflation"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  Ки (индекс инфляции)
+                </label>
+                <input
+                  type="text"
+                  id="kInflation"
+                  name="kInflation"
+                  value={form.kInflation} /* ← по умолчанию “1.108” */
+                  onChange={handleChange}
+                  placeholder="1.108"
+                  className={fieldClass("kInflation")}
+                />
+                {errors.kInflation && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.kInflation}
+                  </p>
+                )}
+              </motion.div>
 
+              {/* 3.  ⬇ ПЕРЕНОСИМ “Коммерческое использование земли” СЮДА */}
+              <motion.div
+                className="relative"
+                variants={fadeInUp}
+                custom={nextAi()}
+              >
+                <label
+                  htmlFor="landUse"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  Коммерческое использование земли
+                </label>
+                <select
+                  id="landUse"
+                  name="landUse"
+                  value={form.landUse}
+                  onChange={handleChange}
+                  className={selectBase}
+                >
+                  <option value="">выберите из списка</option>
+                  {COMMERCIAL_USE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </motion.div>
               {/* C (ставка налога) */}
               <motion.div variants={fadeInUp} custom={nextAi()}>
                 <label
@@ -1057,48 +1210,6 @@ const Welcome: FC = () => {
                   )}
                 </motion.div>
               ))}
-              {/* land use coefficient */}
-              <motion.div
-                className="relative"
-                variants={fadeInUp}
-                custom={nextAi()}
-              >
-                <label
-                  htmlFor="landUse"
-                  className="block mb-1 text-[#0A2D8F] font-medium"
-                >
-                  Коммерческое использование земли
-                </label>
-                <select
-                  id="landUse"
-                  name="landUse"
-                  value={form.landUse}
-                  onChange={handleChange}
-                  className={selectBase}
-                >
-                  <option value="">выберите из списка</option> {/* NEW */}
-                  {COMMERCIAL_USE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
-                  <svg
-                    className="w-5 h-5 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </motion.div>
             </div>
 
             {/* submit */}
