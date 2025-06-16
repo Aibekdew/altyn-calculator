@@ -630,7 +630,7 @@ const Welcome: FC = () => {
     ${errors.affiliate && "border-red-500 focus:ring-red-400/60"}`}
             >
               <option value="">— выберите из списка —</option>
-              <optgroup label="Упровления">
+              <optgroup label="Управление">
                 <option value="Управление ОАО « Кыргызалтын»">
                   Управление ОАО « Кыргызалтын»
                 </option>
@@ -908,7 +908,6 @@ const Welcome: FC = () => {
                 )}
               </motion.div>
 
-              {/* NS (налоговая стоимость) – two aligned inputs */}
               {/* NS (налоговая стоимость) – two aligned inputs */}
               <motion.div variants={fadeInUp} custom={nextAi()}>
                 <label
