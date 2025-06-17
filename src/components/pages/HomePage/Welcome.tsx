@@ -946,6 +946,29 @@ const Welcome: FC = () => {
                     )}
                   </motion.div>
                 ))}
+                {/* в правой колонке добавьте сразу после areaObject */}
+                <motion.div variants={fadeInUp} custom={nextAi()}>
+                  <label
+                    htmlFor="areaBuilding"
+                    className="block mb-1 text-[#0A2D8F] font-medium"
+                  >
+                    Площадь здания (Sз)
+                  </label>
+                  <input
+                    type="text"
+                    id="areaBuilding"
+                    name="areaBuilding"
+                    value={form.areaBuilding}
+                    onChange={handleChange}
+                    placeholder="Введите число"
+                    className={fieldClass("areaBuilding")}
+                  />
+                  {errors.areaBuilding && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.areaBuilding}
+                    </p>
+                  )}
+                </motion.div>
                 <motion.div
                   variants={fadeInUp}
                   custom={nextAi()}
@@ -972,30 +995,6 @@ const Welcome: FC = () => {
             {/* ===== RIGHT COLUMN ===== */}
             <div className={glassPanel}>
               {/* =====  ВЫБОР ФИЛИАЛА / КОМПАНИИ ===== */}
-
-              {/* в правой колонке добавьте сразу после areaObject */}
-              <motion.div variants={fadeInUp} custom={nextAi()}>
-                <label
-                  htmlFor="areaBuilding"
-                  className="block mb-1 text-[#0A2D8F] font-medium"
-                >
-                  Площадь здания (Sз)
-                </label>
-                <input
-                  type="text"
-                  id="areaBuilding"
-                  name="areaBuilding"
-                  value={form.areaBuilding}
-                  onChange={handleChange}
-                  placeholder="Введите число"
-                  className={fieldClass("areaBuilding")}
-                />
-                {errors.areaBuilding && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.areaBuilding}
-                  </p>
-                )}
-              </motion.div>
 
               {/* NS (налоговая стоимость) – two aligned inputs */}
               <motion.div variants={fadeInUp} custom={nextAi()}>
