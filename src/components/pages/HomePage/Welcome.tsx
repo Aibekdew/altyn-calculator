@@ -7,6 +7,14 @@ import React, { Fragment } from "react";
 import { usePrintData } from "@/providers/PrintProvider";
 import PrintSheet from "@/components/Print/PrintSheet";
 import type { CalcResult } from "@/types/calc-result";
+import {
+  useAnimation,
+  MotionValue,
+  animate,
+  useMotionValue,
+  useTransform,
+} from "framer-motion";
+import { Check } from "lucide-react";
 /* =============================================================
    CONSTANTS – styles that reproduce the look & feel of the mockup
    ============================================================= */
@@ -262,18 +270,17 @@ export const AFFILIATE_OPTIONS: Affiliate[] = [
   ...AFFILIATE_SUBSIDIARIES,
 ];
 /* fields we validate as numbers */
-const numericFields = [
-  "areaObject",
-  "areaLand",
-  "areaBuilding", // ▪ добавили
-  "landHC",
-  "landHC2",
-  "landTaxRate",
-  "kInflation",
-  "nds",
-  "nsp",
-  "profit", // ← НОВОЕ
-] as const;
+ const numericFields = [
+   "areaObject",
+   "areaLand",
+   "landHC",
+   "landHC2",
+   "landTaxRate",
+   "kInflation",
+   "nds",
+   "nsp",
+   "profit",
+ ] as const;
 
 const initialForm: FormState = {
   k1: "",
@@ -422,8 +429,7 @@ const BISHKEK_ZONE_OPTIONS: ValCoeff[] = [
 const buildAddress = (k1: string, k1zone: string) => {
   /* Название населённого пункта */
   const cityLabel =
-    K1_OPTIONS.find((o) => o.value === k1)?.label ?? // "г. Бишкек"
-    "";
+    K1_OPTIONS.find((o) => o.value === k1)?.label ?? ""; // "г. Бишкек"
 
   /* Для Бишкека добавляем зону, если она выбрана */
   if (k1 === "bishkek" && k1zone) {
@@ -454,7 +460,12 @@ const Welcome: FC = () => {
   const [result, setResult] = useState<CalcResult | null>(null);
   const bandsToShow = form.k1 ? getBandsForRegion(form.k1) : POP_BANDS;
   const resultRef = useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCheck, setShowCheck] = useState(false);
+  const [progressPct, setProgressPct] = useState(0); // 0‒100 %
 
+ const barValue: MotionValue<number>   = useMotionValue(0);
+ const barWidth: MotionValue<string>   = useTransform(barValue, (v) => `${v}%`);
   // Натыйжа даяр болгондо баракты жылма жылдырып көрсөтүү
   useEffect(() => {
     if (result && resultRef.current) {
@@ -487,27 +498,25 @@ const Welcome: FC = () => {
     return msg === "";
   };
 
-  // === validateForm()
-  const validateForm = () => {
-    const newErr: Record<string, string> = {};
+const validateForm = () => {
+  const newErr: Record<string, string> = {};
 
-    /* числовые поля – как было */
-    numericFields.forEach((f) => {
-      if (!validateField(f, String(form[f]), true))
-        newErr[f] = !String(form[f]).trim()
-          ? "Заполните поле"
-          : "Введите число";
-    });
+  numericFields.forEach((f) => {
+    if (!validateField(f, String(form[f]), true))
+      newErr[f] = !String(form[f]).trim()
+        ? "Заполните поле"
+        : "Введите число";
+  });
 
-    /* --- NEW: популяцияны текшерүү --- */
-    if (!form.popBand) newErr.popBand = "Выберите диапазон населения";
+  // popBand больше не проверяем
+  // if (!form.popBand) newErr.popBand = "Выберите диапазон населения";
 
-    /* --- новый select --- */
-    if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
+  if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
 
-    setErrors(newErr);
-    return !Object.keys(newErr).length;
-  };
+  setErrors(newErr);
+  return !Object.keys(newErr).length;
+};
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -557,106 +566,73 @@ const Welcome: FC = () => {
   };
 
   /* ---------- calculations ---------- */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    /* ─── 1. базовые коэффициенты ────────────────────────────── */
+    /* ---------- 1. вычисляем всё, как раньше ---------- */
     const baseRate = BASE_RATE_BY_K1[form.k1] ?? 100;
-
     const k1 =
       form.k1 === "bishkek"
-        ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
-        : K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1;
-
+        ? (BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ??
+          1)
+        : (K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1);
     const k2 = parseFloat(form.k2 || "1");
     const k3 = parseFloat(form.k3 || "1");
     const k4Base = K4_OPTIONS.find((o) => o.value === form.k4)?.coeff ?? 1;
-    // KIРҮҮ/ЧЫГУУ галочкасы болсо +0.1 кошулат (методикалык примечание)
     const k4 = form.streetAccess ? k4Base + 0.1 : k4Base;
 
-    /* ─── 2. площади и ставки ───────────────────────────────── */
-    /* ─── 2. площади и ставки ───────────────────────────────── */
-    const areaObject = parseFloat(form.areaObject || "0"); // ← Мына бул сапты кош
+    const areaObject = parseFloat(form.areaObject || "0");
     const areaLand = parseFloat(form.areaLand || "0");
 
-    // const areaLand = parseFloat(form.areaLand || "0");
-
-    /* налоговые коэффициенты */
     const landHC = parseFloat(form.landHC || "0");
     const landHC2Coeff = parseFloat(form.landHC2 || "1");
     const landTaxRate = parseFloat(form.landTaxRate || "0");
     const landUseCoeff =
       COMMERCIAL_USE_OPTIONS.find((o) => o.value === form.landUse)?.coeff ?? 1;
-
-    /* инфляция */
     const kInflation = parseFloat(form.kInflation || "1");
 
-    /* ─── 3. собственно формулы аренды/земли ────────────────── */
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
-    // Толук формуласы: Нз = (НС × S × C) / 12
-    const nsFull =
-      landHC * // БНС
-      landHC2Coeff * // Кз
-      landUseCoeff * // Кц
-      kInflation; // Ки
-
+    const nsFull = landHC * landHC2Coeff * landUseCoeff * kInflation;
     const Nz =
       areaLand && landTaxRate ? (nsFull * areaLand * landTaxRate) / 12 : 0;
+    const total = rent + Nz;
 
-    const total = rent + Nz; // без косвенных налогов
-
-    /* ─── 4. НДС и НСП ───────────────────────────────────────── */
     const profitPct = parseFloat(form.profit || "0");
-    const profitValue = (total * profitPct) / 100; // ← рентабельность
-    const subtotalPlus = total + profitValue; // ← «Итого с рентабельностью»
+    const subtotal = total + (total * profitPct) / 100;
 
     const ndsPct = parseFloat(form.nds || "0");
     const nspPct = parseFloat(form.nsp || "0");
-    const ndsValue = (subtotalPlus * ndsPct) / 100; // ← считаем от суммы с рентабельностью
-    const nspValue = (subtotalPlus * nspPct) / 100; // ← то же самое
-    const grandTotal = subtotalPlus + ndsValue + nspValue; // ← «Итого с налогами»
+    const ndsValue = (subtotal * ndsPct) / 100;
+    const nspValue = (subtotal * nspPct) / 100;
+    const grandTotal = subtotal + ndsValue + nspValue;
 
-    const finalTotal = grandTotal;
-
-    /* финальная сумма c учётом рентабельности */
-    /* ─── 5. human-friendly вывод ───────────────────────────── */
     const fmt = (v: number) =>
       v
         ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом`
         : "—";
 
     const rows = [
-      /* 1. Главная формула аренды */
       { label: "Формула", value: "A.пл = Баз.ст*S*K1*K2*K3*K4 + Нз" },
-
-      /* 2. Подстановка чисел */
       {
         label: "Формула",
-        value: `${baseRate}*${areaObject}*${k1}*${k2}*${k3}*${k4.toFixed(
-          2
-        )} + ${Nz.toFixed(2)}`,
+        value: `${baseRate}*${areaObject}*${k1}*${k2}*${k3}*${k4.toFixed(2)} + ${Nz.toFixed(2)}`,
       },
-
-      /* 3. Земельный налог (ежемесячно) */
       {
-        label: "Нз (формула)", // ← было «Aз (формула)»
+        label: "Нз (формула)",
         value: `(${landTaxRate} × ${landHC} × ${form.landHC2} × ${kInflation} × ${landUseCoeff}) / 12`,
       },
-      { label: "Нз", value: fmt(Nz) }, // ← было «Aз»
-      /* --- остальные позиции без изменений --- */
+      { label: "Нз", value: fmt(Nz) },
       { label: `НДС (${ndsPct} %)`, value: fmt(ndsValue) },
       { label: `НСП (${nspPct} %)`, value: fmt(nspValue) },
       { label: "Итого без налогов", value: fmt(total) },
-      { label: "Итого с рентабельностью", value: fmt(subtotalPlus) },
+      { label: "Итого с рентаб-тью", value: fmt(subtotal) },
       { label: "Итого с налогами", value: fmt(grandTotal) },
     ];
-    const addressPart = buildAddress(form.k1, form.k1zone);
-    const objLabel = form.objectName.trim();
+
     const description =
-      "Расчёт стоимости арендной (минимальной) платы за пользование помещением" +
-      (objLabel ? `, ${objLabel}` : "") + // ← NEW
-      (addressPart ? `, расположенным по адресу ${addressPart}` : "");
+      "Расчёт стоимости арендной платы за пользование помещением" +
+      (form.objectName ? `, ${form.objectName}` : "");
 
     const calc: CalcResult = {
       rent,
@@ -665,14 +641,38 @@ const Welcome: FC = () => {
       ndsValue,
       nspValue,
       grandTotal,
-      finalTotal, // ← НОВОЕ
+      finalTotal: grandTotal,
       rows,
       affiliate: form.affiliate,
       description,
     };
 
+    /* ---------- 2. анимируем кнопку ---------- */
+    setIsSubmitting(true);
+    setShowCheck(false);
+    setProgressPct(0);
+    barValue.set(0);
+
+    await new Promise<void>((done) => {
+      animate(barValue, 100, {
+        duration: 0.9,
+        ease: "easeInOut",
+        onUpdate: (v) => setProgressPct(Math.round(v)),
+        onComplete: done,
+      });
+    });
+
+    setShowCheck(true);
+    await new Promise((r) => setTimeout(r, 450));
+
+    /* ---------- 3. вывод результата ---------- */
     setResult(calc);
     setPrintData(calc);
+
+    setIsSubmitting(false);
+    setShowCheck(false);
+    barValue.set(0);
+    setProgressPct(0);
   };
 
   const fieldClass = (f: string) =>
@@ -1213,14 +1213,45 @@ const Welcome: FC = () => {
 
             {/* submit */}
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              variants={fadeInUp}
-              custom={nextAi()}
               type="submit"
-              className={`${buttonMain} lg:col-span-2 self-center`}
+              disabled={isSubmitting}
+              className={`${buttonMain} lg:col-span-2 self-center relative overflow-hidden flex items-center justify-center select-none`}
+              style={{
+                height: isSubmitting ? 36 : 56,
+                borderRadius: isSubmitting ? 9999 : 24,
+                paddingLeft: isSubmitting ? 0 : 40,
+                paddingRight: isSubmitting ? 0 : 40,
+                transition: "all .35s ease",
+              }}
             >
-              Рассчитать стоимость аренды
+              {/* заполняющаяся бирюзовая полоса */}
+              {isSubmitting && (
+                <motion.div
+                  className="absolute left-0 top-0 h-full bg-teal-400"
+                  style={{ width: barWidth }}
+                />
+              )}
+
+              {/* обычный текст */}
+              {!isSubmitting && !showCheck && "Рассчитать стоимость аренды"}
+
+              {/* проценты во время расчёта */}
+              {isSubmitting && !showCheck && (
+                <span className="relative z-10 font-semibold">
+                  {progressPct}%
+                </span>
+              )}
+
+              {/* галочка после заполнения */}
+              {showCheck && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="relative z-10"
+                >
+                  <Check size={22} className="text-white" />
+                </motion.span>
+              )}
             </motion.button>
           </motion.form>
 
