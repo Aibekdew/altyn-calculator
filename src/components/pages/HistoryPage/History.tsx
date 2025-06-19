@@ -4,25 +4,32 @@
 "use client";
 
 import React, { useState } from "react";
-import Header from "@/components/layout/Header/Header";
+import Header                from "@/components/layout/Header/Header";
+import { Loader2 }           from "lucide-react";
 import { useGetHistoryQuery } from "@/redux/api";
-import { Loader2 } from "lucide-react";
+import useAuth               from "@/hooks/useAuth";
 
 const bgGradient =
   "bg-gradient-to-br from-[#c9d6ff] via-[#e2e8f0]/60 to-[#c9d6ff] bg-cover bg-fixed";
 
 const HistoryPage: React.FC = () => {
-  const [search, setSearch]       = useState("");
-  const [dateAfter, setDateAfter] = useState("");
+  const [search, setSearch]         = useState("");
+  const [dateAfter, setDateAfter]   = useState("");
   const [dateBefore, setDateBefore] = useState("");
-  const [page, setPage]           = useState(1);
+  const [page, setPage]             = useState(1);
 
+  /* знаем, кто сейчас вошёл */
+  const { user }  = useAuth();
+  const isAdmin   = user?.profile.role === "ADMIN";
+
+  /* запрос: для админа добавляем user=all */
   const { data, isFetching } = useGetHistoryQuery(
     {
       page,
       search:      search      || undefined,
       date_after:  dateAfter   || undefined,
       date_before: dateBefore  || undefined,
+      ...(isAdmin ? { user: "all" } : {}),
     },
     { refetchOnMountOrArgChange: true }
   );
@@ -37,32 +44,40 @@ const HistoryPage: React.FC = () => {
     setPage(1);
   };
 
+  /* упрощённый класс для inputs */
+  const inputCls =
+    "px-4 py-2 bg-white/90 border border-gray-300 rounded focus:border-blue-400 " +
+    "focus:ring-2 focus:ring-blue-300/40 outline-none";
+
   return (
     <>
       <Header />
 
       <section className={`min-h-screen ${bgGradient} py-10 px-4`}>
         <div className="w-full bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8">
-          {/* ------------- фильтры ------------- */}
+          {/* ────────── фильтры ────────── */}
           <div className="flex flex-wrap gap-3 mb-6">
             <input
               placeholder="Поиск…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="px-4 py-2 border rounded w-full sm:w-auto flex-1"
+              className={`${inputCls} w-full sm:w-auto flex-1`}
             />
+
             <input
               type="date"
               value={dateAfter}
               onChange={(e) => setDateAfter(e.target.value)}
-              className="px-4 py-2 border rounded"
+              className={inputCls}
             />
+
             <input
               type="date"
               value={dateBefore}
               onChange={(e) => setDateBefore(e.target.value)}
-              className="px-4 py-2 border rounded"
+              className={inputCls}
             />
+
             <button
               onClick={resetFilters}
               className="px-5 py-2 bg-gray-200 hover:bg-gray-300 rounded"
@@ -71,17 +86,15 @@ const HistoryPage: React.FC = () => {
             </button>
           </div>
 
-          {/* ------------- таблица ------------- */}
+          {/* ────────── таблица ────────── */}
           <div className="overflow-x-auto rounded-lg border">
             <table className="min-w-full bg-white text-sm text-gray-800">
               <thead className="bg-gray-100 text-gray-700">
                 <tr>
-                  <th className="w-12 p-3">
-                    <input type="checkbox" disabled className="opacity-60" />
-                  </th>
+                  <th className="w-12 p-3"></th>
                   <th className="w-14 p-3 text-left">№</th>
                   <th className="w-44 p-3 text-left">Дата / время</th>
-                  <th className="p-3 text-left">Описание</th>
+                  <th className="p-3  text-left">Описание</th>
                   <th className="w-56 p-3 text-left">ФИО</th>
                 </tr>
               </thead>
@@ -99,17 +112,15 @@ const HistoryPage: React.FC = () => {
                       key={row.id}
                       className={idx % 2 ? "bg-gray-50" : "bg-white"}
                     >
-                      <td className="p-3 text-center">
-                        <input type="checkbox" disabled />
-                      </td>
+                      <td className="p-3"></td>
                       <td className="p-3">{idx + 1 + (page - 1) * 10}</td>
                       <td className="p-3 whitespace-nowrap">{row.created}</td>
                       <td className="p-3">
                         <span className="font-semibold">
                           {row.action === "LOGIN"
                             ? "Вход"
-                            : row.action === "UPDATE"
-                            ? "Обновление"
+                            : row.action === "UPDATE_PROF"
+                            ? "Обновление профиля"
                             : "Печать"}
                         </span>{" "}
                         {row.message}
@@ -128,13 +139,14 @@ const HistoryPage: React.FC = () => {
             </table>
           </div>
 
-          {/* ------------- пагинация ------------- */}
+          {/* ────────── пагинация ────────── */}
           {pageCount > 1 && (
             <div className="flex justify-center items-center gap-2 mt-6 select-none">
               <button
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page === 1}
-                className="w-9 h-9 flex items-center justify-center border rounded hover:bg-gray-100 disabled:opacity-40"
+                className="w-9 h-9 flex items-center justify-center border rounded
+                           hover:bg-gray-100 disabled:opacity-40"
               >
                 ◂
               </button>
@@ -146,14 +158,19 @@ const HistoryPage: React.FC = () => {
                       key={p}
                       onClick={() => setPage(p)}
                       className={`w-9 h-9 border rounded ${
-                        p === page ? "bg-blue-600 text-white" : "hover:bg-gray-100"
+                        p === page
+                          ? "bg-blue-600 text-white"
+                          : "hover:bg-gray-100"
                       }`}
                     >
                       {p}
                     </button>
                   );
                 }
-                if ((p === page - 3 && p > 1) || (p === page + 3 && p < pageCount)) {
+                if (
+                  (p === page - 3 && p > 1) ||
+                  (p === page + 3 && p < pageCount)
+                ) {
                   return <span key={p} className="px-1">…</span>;
                 }
                 return null;
@@ -162,7 +179,8 @@ const HistoryPage: React.FC = () => {
               <button
                 onClick={() => setPage((p) => Math.min(p + 1, pageCount))}
                 disabled={page === pageCount}
-                className="w-9 h-9 flex items-center justify-center border rounded hover:bg-gray-100 disabled:opacity-40"
+                className="w-9 h-9 flex items-center justify-center border rounded
+                           hover:bg-gray-100 disabled:opacity-40"
               >
                 ▸
               </button>

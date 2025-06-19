@@ -1,19 +1,16 @@
 /* ------------------------------------------------------------------
- * src/redux/api/index.ts
- * Единственная точка подключения RTK-Query во всём проекте
+ * src/redux/api/index.ts          (единственная точка RTK-Query)
  * ------------------------------------------------------------------ */
 "use client";
 
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { axiosBaseQuery } from "./baseQueryWithAxios";
 
-/* ──────────────────────────────────────────────────────────────
-   Типы данных
-   ────────────────────────────────────────────────────────────── */
+/* ────────────────── типы ────────────────── */
 export interface HistoryItem {
   id: number;
-  created: string;        // «15.06.2025 10:24:50»
-  action: "LOGIN" | "UPDATE" | "PRINT";
+  created: string;                                // «15.06.2025 10:24:50»
+  action: "LOGIN" | "UPDATE_PROF" | "PRINT_CALC"; // сервер отдаёт именно так
   message: string;
   user_full_name: string;
 }
@@ -25,32 +22,39 @@ export interface HistoryResponse {
   previous: string | null;
 }
 
-/* ──────────────────────────────────────────────────────────────
-   API
-   ────────────────────────────────────────────────────────────── */
+/* параметры, которые мы шлём в query-string */
+export interface HistoryRequestParams {
+  page?: number;
+  search?: string;
+  date_after?: string;
+  date_before?: string;
+  user?: "all";                // ← нужно только администратору
+}
+
+/* ────────────────── API ────────────────── */
 export const api = createApi({
   reducerPath: "api",
-  baseQuery: axiosBaseQuery(),          // наш кастомный axios-baseQuery
-  // NB: обязательно указываем ВСЕ tagTypes, которые используем дальше
+  baseQuery: axiosBaseQuery(),
   tagTypes: ["LandHC2", "History"],
   endpoints: (builder) => ({
     /* ---------- HISTORY ---------- */
-    getHistory: builder.query<
-      HistoryResponse,
-      { page?: number; search?: string; date_after?: string; date_before?: string }
-    >({
+    getHistory: builder.query<HistoryResponse, HistoryRequestParams>({
       query: (params) => ({
         url: "history/",
-        params,                      // ?page=…&search=…&date_after=…
+        params,
       }),
       providesTags: ["History"],
     }),
 
-    /* логируем «Печать» вручную с фронта */
-    addPrintLog: builder.mutation<{ ok: boolean }, void>({
-      query: () => ({
+    /* ---------- LOG «Печать» ---------- */
+    addPrintLog: builder.mutation<
+      { ok: boolean },
+      { description?: string; total?: number }
+    >({
+      query: (body) => ({
         url: "print-log/",
         method: "POST",
+        data: body,
       }),
       invalidatesTags: ["History"],
     }),
@@ -75,15 +79,10 @@ export const api = createApi({
   }),
 });
 
-/* ──────────────────────────────────────────────────────────────
-   Экспорт готовых хуков
-   ────────────────────────────────────────────────────────────── */
+/* готовые хуки ----------------------------------------------------- */
 export const {
-  /* History */
   useGetHistoryQuery,
   useAddPrintLogMutation,
-
-  /* LandHC2 */
   useGetLandHC2Query,
   useUpdateLandHC2Mutation,
 } = api;
