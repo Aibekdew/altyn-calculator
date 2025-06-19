@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  /* Ставим фильтры на иконку календаря в input[type="date"] */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    @apply filter invert brightness-75;
+  }
+  input[type="date"]::-moz-calendar-picker-indicator {
+    @apply filter invert brightness-75;
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.3s ease forwards;
 }

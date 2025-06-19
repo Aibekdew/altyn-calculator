@@ -90,14 +90,16 @@ const Header: React.FC = () => {
             )}
 
             <Link href="/home" className="flex items-center gap-3 no-underline">
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold text-[#003680]">
-                  КЫРГЫЗАЛТЫН
-                </h1>
-                <p className="text-[10px] md:text-xs font-medium text-[#003680] -mt-1">
-                  АЧЫК АКЦИОНЕРДИК КООМУ
-                </p>
-              </div>
+             <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-[20px] mb-[-2px] sm:text-[24px] md:text-[28px] font-bold text-[#003680]">
+                КЫРГЫЗАЛТЫН
+              </h1>
+              <p className="text-[9.5px] mb-[4px] sm:text-[11.4px] md:text-[13.3px] font-medium text-[#003680]">
+                АЧЫК АКЦИОНЕРДИК КОМПАНИЯ
+              </p>
+            </div>
+          </div>
               <img src="/image/logo.png" alt="logo" className="w-14 md:w-20" />
             </Link>
           </div>
