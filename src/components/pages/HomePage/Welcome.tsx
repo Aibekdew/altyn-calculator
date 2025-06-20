@@ -626,7 +626,7 @@ const validateForm = () => {
       { label: `НДС (${ndsPct} %)`, value: fmt(ndsValue) },
       { label: `НСП (${nspPct} %)`, value: fmt(nspValue) },
       { label: "Итого без налогов", value: fmt(total) },
-      { label: "Итого с рентаб-тью", value: fmt(subtotal) },
+      { label: "Итого с рентабельностью", value: fmt(subtotal) },
       { label: "Итого с налогами", value: fmt(grandTotal) },
     ];
 

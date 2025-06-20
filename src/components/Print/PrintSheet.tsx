@@ -8,10 +8,12 @@ import React from "react";
 import { usePrintData } from "@/providers/PrintProvider";
 import { AFFILIATE_OPTIONS } from "../pages/HomePage/Welcome";
 import useAuth from "@/hooks/useAuth";
+import { useGetPrintSettingsQuery } from "@/redux/api";
 
 const PrintSheet: React.FC = () => {
   const { data } = usePrintData();
   const { user } = useAuth();
+  const { data: ps } = useGetPrintSettingsQuery(); // ← подписи
 
   if (!data) return null;
 
@@ -94,12 +96,11 @@ const PrintSheet: React.FC = () => {
       {/* ─────────── Подписи ─────────── */}
       <div className="flex font-bold justify-between mt-10 items-center">
         <div>
-          <p className="mb-[2px]">Начальник УЭАиП</p>
-          <p className="mt-2">ОАО «Кыргызалтын»</p>
+          <p className="mb-[-1px]">{ps?.left_title ?? "Начальник УЭАиП"}</p>
+          <p>{ps?.left_subtitle ?? "ОАО «Кыргызалтын»"}</p>
         </div>
-        {/* --- Исполнитель --- */}
         <div>
-          <p>Мусаева&nbsp;Э.&nbsp;М.</p>
+          <p>{ps?.right_executor ?? "Мусаева Э. М."}</p>
         </div>
       </div>
     </div>

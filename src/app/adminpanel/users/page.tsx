@@ -6,8 +6,10 @@ import React, { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/utils/api";
 import useAuth, { CurrentUser } from "@/hooks/useAuth";
-import { AiOutlinePlus, AiOutlineEdit } from "react-icons/ai";
+import { AiOutlinePlus, AiOutlineEdit, AiOutlinePrinter, AiOutlineArrowLeft } from "react-icons/ai";
 import { HiOutlineUser } from "react-icons/hi";
+import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "react-hot-toast";              // ← NEW
 
 // Тип, который приходит из API (UserManagementSerializer)
 interface UserItem {
@@ -19,17 +21,35 @@ interface UserItem {
   role_read: "ADMIN" | "USER";
   is_active_read: boolean;
 }
-
+interface PrintSettings {
+  left_title: string;
+  left_subtitle: string;
+  right_executor: string;
+}
+const fadeVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+  exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
+};
 const AdminUsersPage: React.FC = () => {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserItem[]>([]);
+    const [uLoading, setULoading] = useState(true);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [ps, setPs] = useState<PrintSettings>({
+    left_title: "",
+    left_subtitle: "",
+    right_executor: "",
+  });
+  const [psSaving, setPsSaving] = useState(false);
   // Состояния для модалок
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [view, setView] = useState<"users" | "print">("users");
+
 
   // Поля для «Добавить пользователя»
   const [newUsername, setNewUsername] = useState("");
@@ -80,11 +100,35 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
+ const fetchPrintSettings = async () => {
+    try {
+      const { data } = await api.get<PrintSettings>("/print-settings/");
+      setPs(data);
+    } catch {
+      setError("Не удалось загрузить настройки печати.");
+    }
+  };
+
   useEffect(() => {
-    if (!authLoading && user && user.profile.role === "ADMIN") {
+    if (!authLoading && user?.profile.role === "ADMIN") {
       fetchUsers();
+      fetchPrintSettings();
     }
   }, [authLoading, user]);
+
+  /* =========== СОХРАНИТЬ print-settings =========== */
+const savePrintSettings = async () => {
+  setPsSaving(true);
+  try {
+    await api.put("/print-settings/", ps);
+    toast.success("Подписи успешно сохранены");       // ← NEW
+  } catch {
+    toast.error("Не удалось сохранить подписи");      // ← NEW
+  } finally {
+    setPsSaving(false);
+  }
+};
+
 
   // 3) Обработчик «Добавить пользователя»
   const handleAddUser = async (e: FormEvent) => {
@@ -133,6 +177,7 @@ const AdminUsersPage: React.FC = () => {
       setNewIsActive(true);
 
       fetchUsers();
+        toast.success("Пользователь добавлен");        
     } catch (err: any) {
       if (err.response?.data) {
         const apiErrors = err.response.data;
@@ -146,6 +191,8 @@ const AdminUsersPage: React.FC = () => {
       } else {
         setError("Ошибка при создании пользователя.");
       }
+        toast.error("Ошибка при создании пользователя");    // ← NEW
+
     }
   };
 
@@ -201,6 +248,7 @@ const AdminUsersPage: React.FC = () => {
       });
       setIsEditModalOpen(false);
       fetchUsers();
+       toast.success("Изменения сохранены"); 
     } catch (err: any) {
       if (err.response?.data) {
         const apiErrors = err.response.data;
@@ -214,6 +262,8 @@ const AdminUsersPage: React.FC = () => {
       } else {
         setError("Ошибка при сохранении изменений.");
       }
+        toast.error("Не удалось сохранить изменения");      // ← NEW
+
     }
   };
 
@@ -232,7 +282,7 @@ const AdminUsersPage: React.FC = () => {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       {/* Кнопка «Назад» */}
-      <div className="flex justify-center items-center px-[15px] py-[20px] bg-[#003680] mb-[20px] justify-between">
+<div className="flex items-center justify-between px-4 py-3 bg-[#003680] mb-4">
         {/* Заголовок страницы */}
         <h1 className="text-3xl font-bold text-white">
           Админ-панель: Пользователи
@@ -271,83 +321,35 @@ const AdminUsersPage: React.FC = () => {
           <AiOutlineEdit size={20} />
           <span className="font-medium">Обновить</span>
         </button>
+<button
+  onClick={() => setView(view === "print" ? "users" : "print")}
+  className={`
+    inline-flex items-center gap-2 px-5 py-3 rounded-lg shadow transition
+    ${view === "print"
+      ? "bg-gray-200 hover:bg-gray-300 text-gray-800"   // при виде «print» — светлая «назад»
+      : "bg-indigo-600 hover:bg-indigo-700 text-white"  // при виде «users» — яркая «печать»
+    }
+  `}
+>
+  {view === "print" ? (
+    <>
+      <AiOutlineArrowLeft size={20} />
+      К списку
+    </>
+  ) : (
+    <>
+      <AiOutlinePrinter size={20} />
+      Настройки печати
+    </>
+  )}
+</button>
       </div>
-
-      {/* Список пользователей в виде карточек */}
-      {loading ? (
-        <div className="text-gray-600">Загрузка списка...</div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {users.map((u) => {
-            const fullName = `${u.first_name} ${u.last_name}${
-              u.patronymic_read ? " " + u.patronymic_read : ""
-            }`;
-            return (
-              <div
-                key={u.id}
-                className={`
-                  flex flex-col justify-between
-                  border-l-4
-                  ${
-                    u.is_active_read
-                      ? "border-green-500 bg-white"
-                      : "border-red-500 bg-white"
-                  }
-                  rounded-lg shadow-md
-                  overflow-hidden
-                `}
-              >
-                {/* Содержимое карточки */}
-                <div className="p-4">
-                  <div className="flex items-center gap-3">
-                    <HiOutlineUser size={28} className="text-gray-700" />
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800">
-                        {fullName}
-                      </h2>
-                      <p className="text-[20px] text-gray-600">{u.username}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-2">
-                    {u.is_active_read ? (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full flex items-center gap-1">
-                        <span className="h-2 w-2 bg-green-600 rounded-full block" />
-                        Активен
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 bg-red-100 text-red-800 text-sm rounded-full flex items-center gap-1">
-                        <span className="h-2 w-2 bg-red-600 rounded-full block" />
-                        Неактивен
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Кнопки: «Редактировать» и «Активировать/Деактивировать» */}
-                <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-t">
-                  <button
-                    onClick={() => openEditModal(u)}
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded transition"
-                  >
-                    <AiOutlineEdit size={16} /> Редактировать
-                  </button>
-                  <button
-                    onClick={() => toggleActive(u)}
-                    className={`px-3 py-2 text-sm rounded transition ${
-                      u.is_active_read
-                        ? "bg-red-500 hover:bg-red-600 text-white"
-                        : "bg-green-500 hover:bg-green-600 text-white"
-                    }`}
-                  >
-                    {u.is_active_read ? "Деактивировать" : "Активировать"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+      {error && (
+        <div className="mx-6 mt-4 p-3 bg-red-100 text-red-800 border border-red-200 rounded">
+          {error}
         </div>
       )}
+
 
       {/* Модальное окно «Добавить пользователя» */}
       {isAddModalOpen && (
@@ -750,6 +752,132 @@ const AdminUsersPage: React.FC = () => {
           </div>
         </div>
       )}
+        <AnimatePresence mode="wait">
+        {view === "users" ? (
+          <motion.div
+            key="users"
+            variants={fadeVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="px-6 mt-8"
+          >
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {users.map((u) => {
+            const fullName = `${u.first_name} ${u.last_name}${
+              u.patronymic_read ? " " + u.patronymic_read : ""
+            }`;
+            return (
+              <div
+                key={u.id}
+                className={`
+                  flex flex-col justify-between
+                  border-l-4
+                  ${
+                    u.is_active_read
+                      ? "border-green-500 bg-white"
+                      : "border-red-500 bg-white"
+                  }
+                  rounded-lg shadow-md
+                  overflow-hidden
+                `}
+              >
+                {/* Содержимое карточки */}
+                <div className="p-4">
+                  <div className="flex items-center gap-3">
+                    <HiOutlineUser size={28} className="text-gray-700" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800">
+                        {fullName}
+                      </h2>
+                      <p className="text-[20px] text-gray-600">{u.username}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    {u.is_active_read ? (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full flex items-center gap-1">
+                        <span className="h-2 w-2 bg-green-600 rounded-full block" />
+                        Активен
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 bg-red-100 text-red-800 text-sm rounded-full flex items-center gap-1">
+                        <span className="h-2 w-2 bg-red-600 rounded-full block" />
+                        Неактивен
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Кнопки: «Редактировать» и «Активировать/Деактивировать» */}
+                <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-t">
+                  <button
+                    onClick={() => openEditModal(u)}
+                    className="inline-flex items-center gap-1 px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded transition"
+                  >
+                    <AiOutlineEdit size={16} /> Редактировать
+                  </button>
+                  <button
+                    onClick={() => toggleActive(u)}
+                    className={`px-3 py-2 text-sm rounded transition ${
+                      u.is_active_read
+                        ? "bg-red-500 hover:bg-red-600 text-white"
+                        : "bg-green-500 hover:bg-green-600 text-white"
+                    }`}
+                  >
+                    {u.is_active_read ? "Деактивировать" : "Активировать"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="print"
+            variants={fadeVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="px-6 mt-8 flex justify-center"
+          >
+            <div className="w-full max-w-xl bg-white rounded-xl shadow p-8 space-y-6">
+              <h2 className="text-xl font-semibold text-gray-800 text-center">
+                Подписи для печати
+              </h2>
+
+              {[
+                { label: "Левая строка 1",   key: "left_title"     },
+                { label: "Левая строка 2",   key: "left_subtitle"  },
+                { label: "Правая строка",    key: "right_executor" },
+              ].map(({ label, key }) => (
+                <div key={key}>
+                  <label className="block mb-1 font-medium text-gray-700">
+                    {label}
+                  </label>
+                  <input
+                    value={(ps as any)[key]}
+                    onChange={(e) => setPs({ ...ps, [key]: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-4 bg-white py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 "
+                  />
+                </div>
+              ))}
+
+              <div className="text-center pt-2">
+                <button
+                  onClick={savePrintSettings}
+                  disabled={psSaving}
+                  className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60
+                             text-white rounded-lg shadow transition"
+                >
+                  {psSaving ? "Сохраняю…" : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

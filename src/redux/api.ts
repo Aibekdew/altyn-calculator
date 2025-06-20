@@ -30,13 +30,36 @@ export interface HistoryRequestParams {
   date_before?: string;
   user?: "all";                // ← нужно только администратору
 }
-
+interface PrintSettings {
+  left_title: string;
+  left_subtitle: string;
+  right_executor: string;
+}
 /* ────────────────── API ────────────────── */
 export const api = createApi({
   reducerPath: "api",
   baseQuery: axiosBaseQuery(),
-  tagTypes: ["LandHC2", "History"],
+  tagTypes: ["LandHC2", "History", "PrintSettings"],   // ← добавили тег
   endpoints: (builder) => ({
+    /* ---------- PRINT SETTINGS ---------- */
+    getPrintSettings: builder.query<PrintSettings, void>({
+      query: () => ({ url: "print-settings/" }),       // ✅ объект, не строка
+      keepUnusedDataFor: 300,
+      providesTags: ["PrintSettings"],
+    }),
+
+    updatePrintSettings: builder.mutation<
+      PrintSettings,
+      Partial<PrintSettings>
+    >({
+      query: (body) => ({
+        url: "print-settings/",
+        method: "PUT",
+        data: body,
+      }),
+      invalidatesTags: ["PrintSettings"],
+    }),
+
     /* ---------- HISTORY ---------- */
     getHistory: builder.query<HistoryResponse, HistoryRequestParams>({
       query: (params) => ({
@@ -85,4 +108,6 @@ export const {
   useAddPrintLogMutation,
   useGetLandHC2Query,
   useUpdateLandHC2Mutation,
+  useGetPrintSettingsQuery,
+  useUpdatePrintSettingsMutation,
 } = api;
