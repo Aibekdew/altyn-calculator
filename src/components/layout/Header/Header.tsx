@@ -4,35 +4,35 @@
 "use client";
 
 import React, { useState } from "react";
-import Link                     from "next/link";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Printer, Clock, ChevronLeft } from "lucide-react";
 
-import useAuth                         from "@/hooks/useAuth";
-import { usePrintData }                from "@/providers/PrintProvider";
-import { useAddPrintLogMutation }      from "@/redux/api";
-import ProfileDropdown                 from "../ProfileDropdown";
+import useAuth from "@/hooks/useAuth";
+import { usePrintData } from "@/providers/PrintProvider";
+import { useAddPrintLogMutation } from "@/redux/api";
+import ProfileDropdown from "../ProfileDropdown";
 
 const headerVariants = {
-  hidden:  { y: -50, opacity: 0 },
-  visible: { y: 0,  opacity: 1, transition: { duration: 0.45 } },
+  hidden: { y: -50, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.45 } },
 };
 
 const Header: React.FC = () => {
-  const router    = useRouter();
-  const pathname  = usePathname();
+  const router = useRouter();
+  const pathname = usePathname();
   const { user, loading, logout } = useAuth();
 
   const { data: printData } = usePrintData();
-  const [addPrintLog]       = useAddPrintLogMutation();
+  const [addPrintLog] = useAddPrintLogMutation();
 
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [toast,       setToast]     = useState(false);
+  const [toast, setToast] = useState(false);
 
   if (loading) return null;
 
-  const isAdmin   = user?.profile.role === "ADMIN";
+  const isAdmin = user?.profile.role === "ADMIN";
   const isHistory = pathname.startsWith("/history");
 
   /* ----- Печать и логирование ----- */
@@ -48,7 +48,7 @@ const Header: React.FC = () => {
     try {
       await addPrintLog({
         description: printData.description,
-        total:       printData.finalTotal,
+        total: printData.finalTotal,
       }).unwrap();
     } catch {}
   };
@@ -90,15 +90,22 @@ const Header: React.FC = () => {
             )}
 
             <Link href="/home" className="flex items-center gap-3 no-underline">
-                  <div className="flex items-center gap-3">
-              <h1 className="text-[20px] mb-[-2px] sm:text-[24px] md:text-[28px] font-bold text-[#003680]">
-                КЫРГЫЗАЛТЫН
-              </h1>
-              <p className="text-[9.5px] mb-[4px] sm:text-[11.4px] md:text-[13.3px] font-medium text-[#003680]">
-                АЧЫК АКЦИОНЕРДИК КОМПАНИЯ
-              </p>
-            </div>
-              <img src="/image/logo.png" alt="logo" className="w-16 sm:w-20 md:w-24" />
+              <div className="flex items-center gap-3">
+                <div>
+                  <h1 className="text-[20px] mb-[-2px] sm:text-[24px] md:text-[28px] font-bold text-[#003680]">
+                    КЫРГЫЗАЛТЫН
+                  </h1>
+                  <p className="text-[9.5px] mb-[4px] sm:text-[11.4px] md:text-[13.3px] font-medium text-[#003680]">
+                    АЧЫК АКЦИОНЕРДИК КОМПАНИЯ
+                  </p>
+                </div>
+              </div>
+
+              <img
+                src="/image/logo.png"
+                alt="logo"
+                className="w-16 sm:w-20 md:w-24"
+              />
             </Link>
           </div>
 
