@@ -90,8 +90,7 @@ const Header: React.FC = () => {
             )}
 
             <Link href="/home" className="flex items-center gap-3 no-underline">
-             <div className="flex items-center gap-3">
-            <div>
+                  <div className="flex items-center gap-3">
               <h1 className="text-[20px] mb-[-2px] sm:text-[24px] md:text-[28px] font-bold text-[#003680]">
                 КЫРГЫЗАЛТЫН
               </h1>
@@ -99,8 +98,7 @@ const Header: React.FC = () => {
                 АЧЫК АКЦИОНЕРДИК КОМПАНИЯ
               </p>
             </div>
-          </div>
-              <img src="/image/logo.png" alt="logo" className="w-14 md:w-20" />
+              <img src="/image/logo.png" alt="logo" className="w-16 sm:w-20 md:w-24" />
             </Link>
           </div>
 
