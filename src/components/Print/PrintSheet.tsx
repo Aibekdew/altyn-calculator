@@ -1,8 +1,3 @@
-/* ------------------------------------------------------------------
- * components/Print/PrintSheet.tsx
- * Печать үчүн даяр барак.
- * ------------------------------------------------------------------ */
-
 "use client";
 import React from "react";
 import { usePrintData } from "@/providers/PrintProvider";
