@@ -12,8 +12,8 @@ export interface CalcResult {
   nspValue: number;
   grandTotal: number;
   rows: CalcRow[];
-  finalTotal: number;   // ← ДОБАВИЛИ!
+  finalTotal: number; // ← ДОБАВИЛИ!
 
-  affiliate?: string;     // выбранный филиал
-  description?: string;   // произвольный текст (адрес-описание)
+  affiliate?: string; // выбранный филиал
+  description?: string; // произвольный текст (адрес-описание)
 }

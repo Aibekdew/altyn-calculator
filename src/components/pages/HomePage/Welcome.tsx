@@ -94,6 +94,12 @@ interface FormState {
   affiliate: string;
   objectName: string;
   popBand: string;
+  defC: string;
+  defKp: string;
+  defKn: string;
+  wallMaterial: string; // выбранный материал
+  wallServiceLife: string; // выбранный срок эксплуатации
+  wallBaseCost: string;
 }
 type ValCoeff = { value: string; label: string; coeff: number };
 type Affiliate = { value: string; label: string };
@@ -101,16 +107,16 @@ const SORT_BY_LABEL = <T extends { label: string }>(arr: T[]) =>
   arr.slice().sort((a, b) => a.label.localeCompare(b.label, "ru"));
 
 export const K1_OPTIONS = SORT_BY_LABEL([
-  { value: "batken", label: "Баткенская область", coeff: 0.8 },
-  { value: "bishkek", label: "г. Бишкек", coeff: 1.0 },
-  { value: "chui", label: "Чуйская область", coeff: 0.8 },
+  { value: "batken", label: "Баткенская область", coeff: 1 },
+  { value: "bishkek", label: "г. Бишкек", coeff: 0 },
+  { value: "chui", label: "Чуйская область", coeff: 1 },
   { value: "issyk_kul", label: "Иссык-Куль (курортная зона)", coeff: 1.2 },
-  { value: "issyk_kul_reg", label: "Иссык-Кульская область", coeff: 0.8 },
-  { value: "jalal_abad", label: "Джалал-Абадская область", coeff: 0.8 },
-  { value: "naryn", label: "Нарынская область", coeff: 0.8 },
-  { value: "osh_city", label: "г. Ош", coeff: 0.9 },
-  { value: "osh_region", label: "Ошская область", coeff: 0.8 },
-  { value: "talas", label: "Таласская область", coeff: 0.8 },
+  { value: "issyk_kul_reg", label: "Иссык-Кульская область", coeff: 1 },
+  { value: "jalal_abad", label: "Джалал-Абадская область", coeff: 1 },
+  { value: "naryn", label: "Нарынская область", coeff: 1 },
+  { value: "osh_city", label: "г. Ош", coeff: 1.1 },
+  { value: "osh_region", label: "Ошская область", coeff: 1 },
+  { value: "talas", label: "Таласская область", coeff: 1 },
 ]);
 
 export const K2_OPTIONS = SORT_BY_LABEL([
@@ -118,12 +124,12 @@ export const K2_OPTIONS = SORT_BY_LABEL([
     value: "1.1",
     label: "удовлетворительное – требуется косметический ремонт",
   },
-  { value: "1.0", label: "удовлетворительное – требуется капитальный ремонт" },
+  { value: "1", label: "удовлетворительное – требуется капитальный ремонт" },
   { value: "1.2", label: "хорошее (не требуется ремонт)" },
 ]);
 
 export const K3_OPTIONS = SORT_BY_LABEL([
-  { value: "1.0", label: "техническое обустройство отсутствует" },
+  { value: "1", label: "техническое обустройство отсутствует" },
   { value: "1.2", label: "наличие водопровода, центрального отопления" },
   { value: "1.1", label: "наличие водопровода" },
   {
@@ -170,8 +176,72 @@ const K4_GROUPS: Record<number, string[]> = {
   1.4: ["Кинотеатр", "Офис", "Помещения"],
   1.3: ["Химчистка", "Ремонт обуви"],
   1.2: ["Автостоянка", "Склад"],
-  1.0: ["Производство", "Производственные услуги", "Разное"],
+  1: ["Производство", "Производственные услуги", "Разное"],
 };
+
+// в начале файла, рядом с K4_OPTIONS и COMMERCIAL_USE_OPTIONS
+export const KN_FUNCTIONAL_OPTIONS: ValCoeff[] = [
+  {
+    value: "hotels_lombards_exchange",
+    label: "Гостиницы, ломбарды, обменные пункты",
+    coeff: 1.6,
+  },
+  {
+    value: "residential_on_resort_territory",
+    label:
+      "Жилые здания и помещения, расположенные на территории курортно-оздоровительных учреждений",
+    coeff: 1.5,
+  },
+  {
+    value: "gas_stations",
+    label: "Автозаправочные станции",
+    coeff: 1.5,
+  },
+  {
+    value: "mini_markets",
+    label:
+      "Мини-рынки, рынки, торгово-рыночные центры, комплексы, торговые центры",
+    coeff: 1.6,
+  },
+  {
+    value: "public_catering_retail_services",
+    label: "Объекты имущества общественного питания, торговли, сферы услуг",
+    coeff: 1.0,
+  },
+  {
+    value: "rail_and_bus_terminals",
+    label:
+      "Железнодорожные вокзалы и автовокзалы, автостоянки, грузовые станции железнодорожного транспорта",
+    coeff: 0.8,
+  },
+  {
+    value: "administrative_offices",
+    label:
+      "Административные, офисные здания, бизнес-центры, банки, а также капитальные строения или помещения некоммерческих организаций",
+    coeff: 0.6,
+  },
+  {
+    value: "transport_service_energy",
+    label:
+      "Объекты имущества предприятий транспорта, предприятий автосервиса, связи и энергетики",
+    coeff: 0.5,
+  },
+  {
+    value: "defense_sport_technical",
+    label: "Оборонно-спортивно-технические объекты имущества",
+    coeff: 0.3,
+  },
+  {
+    value: "agricultural_production_buildings",
+    label: "Сельскохозяйственные производственные здания",
+    coeff: 0.3,
+  },
+  {
+    value: "sanatoriums_pensions",
+    label: "Санатории, пансионаты, дома отдыха",
+    coeff: 0.8,
+  },
+];
 
 /* плоский массив + алфавитная сортировка --------------------------- */
 export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
@@ -270,17 +340,17 @@ export const AFFILIATE_OPTIONS: Affiliate[] = [
   ...AFFILIATE_SUBSIDIARIES,
 ];
 /* fields we validate as numbers */
- const numericFields = [
-   "areaObject",
-   "areaLand",
-   "landHC",
-   "landHC2",
-   "landTaxRate",
-   "kInflation",
-   "nds",
-   "nsp",
-   "profit",
- ] as const;
+const numericFields = [
+  "areaObject",
+  "areaLand",
+  "landHC",
+  "landHC2",
+  "landTaxRate",
+  "kInflation",
+  "nds",
+  "nsp",
+  "profit",
+] as const;
 
 const initialForm: FormState = {
   k1: "",
@@ -303,6 +373,12 @@ const initialForm: FormState = {
   affiliate: "",
   objectName: "",
   popBand: "",
+  defC: "",
+  defKp: "",
+  defKn: "",
+  wallMaterial: "",
+  wallServiceLife: "",
+  wallBaseCost: "",
 };
 const BASE_RATE_BY_K1: Record<string, number> = {
   bishkek: 100,
@@ -411,25 +487,150 @@ interface KpOption {
   label: string;
   coeff: number;
 }
+
+interface LifeOption {
+  label: string;
+  coeff: number;
+}
+interface RegionalOption {
+  label: string;
+  coeff: number;
+}
+interface RegionalGroup {
+  region: string;
+  options: RegionalOption[];
+}
+// 1. Объявляем список ставок налога (ст. 379 НК КР)
+interface RateOption {
+  label: string;
+  coeff: number;
+}
+
+const C_RATE_OPTIONS: RateOption[] = [
+  { label: "Жилые здания и помещения", coeff: 0.35 },
+  { label: "Нежилые здания, сооружения и помещения", coeff: 0.8 },
+  { label: "Земельные участки, кроме сельскохозяйственных угодий", coeff: 1 },
+  { label: "Сельскохозяйственные угодья", coeff: 0.01 },
+  {
+    label:
+      "Транспортные средства с двигателем внутреннего сгорания (установленный объем)",
+    coeff: 1,
+  },
+  {
+    label:
+      "Транспортные средства без установленного объема или без двигателя внутреннего сгорания",
+    coeff: 0.5,
+  },
+];
+
+const REGIONAL_KP_OPTIONS: RegionalGroup[] = [
+  {
+    region: "Баткенская область",
+    options: [
+      { label: "Баткенский район", coeff: 0.2 },
+      { label: "Лейлекский район", coeff: 0.2 },
+      { label: "Кадамжайский район", coeff: 0.2 },
+      { label: "город Кызыл-Кия", coeff: 0.1 },
+      { label: "город Сулюкта", coeff: 0.1 },
+    ],
+  },
+  {
+    region: "Джалал-Абадская область",
+    options: [
+      { label: "Ноокенский район", coeff: 0.2 },
+      { label: "Базар-Коргонский район", coeff: 0.2 },
+      { label: "Сузакский район", coeff: 0.3 },
+      { label: "Тогуз-Тороуский район", coeff: 0.1 },
+      { label: "Чаткальский район", coeff: 0.1 },
+      { label: "город Джалал-Абад", coeff: 0.8 },
+      { label: "город Майлуу-Суу", coeff: 0.1 },
+      { label: "город Кара-Куль", coeff: 0.1 },
+      { label: "город Таш-Кумыр", coeff: 0.1 },
+    ],
+  },
+  {
+    region: "Иссык-Кульская область",
+    options: [
+      { label: "Ак-Суйский район", coeff: 0.3 },
+      { label: "Джети-Огузский район", coeff: 0.3 },
+      { label: "Ыссык-Кульский район", coeff: 0.3 },
+      { label: "Тонский район", coeff: 0.2 },
+      { label: "Тюпский район", coeff: 0.2 },
+      { label: "город Каракол", coeff: 0.6 },
+      { label: "город Балыкчы", coeff: 0.3 },
+    ],
+  },
+  {
+    region: "Таласская область",
+    options: [
+      { label: "Манасский район", coeff: 0.1 },
+      { label: "Таласский район", coeff: 0.2 },
+      { label: "город Талас", coeff: 0.4 },
+    ],
+  },
+  {
+    region: "Нарынская область",
+    options: [
+      { label: "город Нарын", coeff: 0.3 },
+      { label: "Ак-Талинский район", coeff: 0.1 },
+      { label: "Ат-Башинский район", coeff: 0.1 },
+      { label: "Джумгальский район", coeff: 0.1 },
+      { label: "Кочкорский район", coeff: 0.2 },
+      { label: "Нарынский район", coeff: 0.2 },
+    ],
+  },
+  {
+    region: "Ошская область",
+    options: [
+      { label: "Алайский район", coeff: 0.2 },
+      { label: "Араванский район", coeff: 0.3 },
+      { label: "Кара-Кульджинский район", coeff: 0.2 },
+      { label: "Кара-Суйский район", coeff: 0.6 },
+      { label: "Ноокатский район", coeff: 0.3 },
+      { label: "Узгенский район", coeff: 0.3 },
+      { label: "Чон-Алайский район", coeff: 0.1 },
+      { label: "город Ош", coeff: 0.9 },
+    ],
+  },
+  {
+    region: "Чуйская область",
+    options: [
+      { label: "Аламудунский район", coeff: 0.8 },
+      { label: "Жайылский район", coeff: 0.4 },
+      { label: "Ысык-Атинский район", coeff: 0.4 },
+      { label: "Кеминский район", coeff: 0.3 },
+      { label: "Московский район", coeff: 0.4 },
+      { label: "Панфиловский район", coeff: 0.2 },
+      { label: "Сокулукский район", coeff: 0.7 },
+      { label: "Чуйский район", coeff: 0.4 },
+      { label: "город Токмок", coeff: 0.6 },
+      { label: "город Кара-Балта", coeff: 0.6 },
+    ],
+  },
+  {
+    region: "Город Бишкек",
+    options: [{ label: "город Бишкек", coeff: 1.0 }],
+  },
+];
+
 /* ───── добавьте рядом с K-справочниками ───── */
 const BISHKEK_ZONE_OPTIONS: ValCoeff[] = [
   {
     value: "zone1",
     label: "границы ул.Боконбаева, Суюмбаева, Фрунзе, пр.Манаса, Боконбаева",
-    coeff: 1.3,
+    coeff: 1.2,
   },
   {
     value: "zone2",
     label:
       "пр.Мира, ул.Ахунбаева, ул.Шабдан-Баатыра, ул.Курманжан Датка, пр.Жибек-Жолу, ул.Фучика, ул.Московская, ул.Некрасова.ю ул.Л.Толстого, пр.Мира",
-    coeff: 1.2,
+    coeff: 1.1,
   },
-  { value: "zone3", label: "остальные районы г.Бишкек", coeff: 1.1 },
+  { value: "zone3", label: "остальные районы г.Бишкек", coeff: 1 },
 ];
 const buildAddress = (k1: string, k1zone: string) => {
   /* Название населённого пункта */
-  const cityLabel =
-    K1_OPTIONS.find((o) => o.value === k1)?.label ?? ""; // "г. Бишкек"
+  const cityLabel = K1_OPTIONS.find((o) => o.value === k1)?.label ?? ""; // "г. Бишкек"
 
   /* Для Бишкека добавляем зону, если она выбрана */
   if (k1 === "bishkek" && k1zone) {
@@ -447,7 +648,7 @@ export const COMMERCIAL_USE_OPTIONS: KpOption[] = KP_ITEMS.map(
   })
 );
 const Welcome: FC = () => {
-  const { setData: setPrintData } = usePrintData();
+  const { setData } = usePrintData();
   const { value: backendHC2, loading: hc2Loading, persist } = useLandHC2();
   useEffect(() => {
     if (!hc2Loading) {
@@ -464,8 +665,8 @@ const Welcome: FC = () => {
   const [showCheck, setShowCheck] = useState(false);
   const [progressPct, setProgressPct] = useState(0); // 0‒100 %
 
- const barValue: MotionValue<number>   = useMotionValue(0);
- const barWidth: MotionValue<string>   = useTransform(barValue, (v) => `${v}%`);
+  const barValue: MotionValue<number> = useMotionValue(0);
+  const barWidth: MotionValue<string> = useTransform(barValue, (v) => `${v}%`);
   // Натыйжа даяр болгондо баракты жылма жылдырып көрсөтүү
   useEffect(() => {
     if (result && resultRef.current) {
@@ -498,71 +699,123 @@ const Welcome: FC = () => {
     return msg === "";
   };
 
-const validateForm = () => {
-  const newErr: Record<string, string> = {};
+  const WALL_LIFE_OPTIONS: Record<string, LifeOption[]> = {
+    // Кирпич
+    Кирпич: [
+      { label: "До 5 лет", coeff: 15000 },
+      { label: "5-15 лет", coeff: 14000 },
+      { label: "15-30 лет", coeff: 13000 },
+      { label: "30-45 лет", coeff: 12000 },
+      { label: "более 45 лет", coeff: 10000 },
+    ],
 
-  numericFields.forEach((f) => {
-    if (!validateField(f, String(form[f]), true))
-      newErr[f] = !String(form[f]).trim()
-        ? "Заполните поле"
-        : "Введите число";
-  });
+    // Дерево
+    Дерево: [
+      { label: "До 5 лет", coeff: 10000 },
+      { label: "5-15 лет", coeff: 13000 },
+      { label: "15-30 лет", coeff: 12000 },
+      { label: "30-45 лет", coeff: 11000 },
+      { label: "более 45 лет", coeff: 10000 },
+    ],
 
-  // popBand больше не проверяем
-  // if (!form.popBand) newErr.popBand = "Выберите диапазон населения";
+    // Сборный или монолитный бетон и железобетон, бетонные блоки, пескоблок, пеноблок, пенобетон, стекло, сэндвич-панель
+    "Сборный или монолитный бетон и железобетон, бетонные блоки, пескоблок, пеноблок, пенобетон, стекло, сэндвич-панель":
+      [
+        { label: "До 5 лет", coeff: 14000 },
+        { label: "5-15 лет", coeff: 13000 },
+        { label: "15-30 лет", coeff: 12000 },
+        { label: "30-45 лет", coeff: 11000 },
+        { label: "более 45 лет", coeff: 10000 },
+      ],
 
-  if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
+    // Сырцовая глина (саман, гуняляк, скомо)
+    "Сырцовая глина (саман, гуняляк, скомо)": [
+      { label: "До 5 лет", coeff: 10000 },
+      { label: "5-15 лет", coeff: 9000 },
+      { label: "15-30 лет", coeff: 8000 },
+      { label: "30-45 лет", coeff: 6000 },
+      { label: "более 45 лет", coeff: 5000 },
+    ],
 
-  setErrors(newErr);
-  return !Object.keys(newErr).length;
-};
+    // Шлакоблок, полистирольный строительный блок
+    "Шлакоблок, полистирольный строительный блок": [
+      { label: "До 5 лет", coeff: 9000 },
+      { label: "5-15 лет", coeff: 8000 },
+      { label: "15-30 лет", coeff: 7000 },
+      { label: "30-45 лет", coeff: 6000 },
+      { label: "более 45 лет", coeff: 5000 },
+    ],
 
+    // Металл
+    Металл: [{ label: "Вне зависимости от срока эксплуатации", coeff: 10000 }],
+
+    // Прочие материалы и материалы для временных помещений
+    "Прочие материалы и материалы для временных помещений": [
+      { label: "Вне зависимости от срока эксплуатации", coeff: 8000 },
+    ],
+  };
+  const validateForm = () => {
+    const newErr: Record<string, string> = {};
+
+    numericFields.forEach((f) => {
+      if (!validateField(f, String(form[f]), true))
+        newErr[f] = !String(form[f]).trim()
+          ? "Заполните поле"
+          : "Введите число";
+    });
+
+    // popBand больше не проверяем
+    // if (!form.popBand) newErr.popBand = "Выберите диапазон населения";
+
+    if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
+
+    setErrors(newErr);
+    return !Object.keys(newErr).length;
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const name = e.target.name as keyof FormState;
-    const val =
-      e.target instanceof HTMLInputElement && e.target.type === "checkbox"
-        ? e.target.checked
-        : e.target.value;
+    const { name, value } = e.target;
 
-    /* ────────────────────────────────────────────────
-     1. Выбрали населённый пункт (k1)
-     ──────────────────────────────────────────────── */
-    if (name === "k1" && typeof val === "string") {
-      // берём «самый высокий» диапазон населения для региона
-      const bandsForRegion = getBandsForRegion(val);
-      const autoBand = bandsForRegion[bandsForRegion.length - 1]?.value || "";
-
-      // ищем БНС (landHC) для региона + диапазона
-      const nsVal =
-        NS_BY_REGION_POP[val]?.[
-          autoBand as keyof (typeof NS_BY_REGION_POP)[string]
-        ] ?? "";
-
-      setForm((prev) => ({
-        ...prev,
-        k1: val, // выбранный населённый пункт
-        popBand: autoBand, // авто-диапазон населения
-        landHC: nsVal ? String(nsVal) : prev.landHC, // БНС
-      }));
-
-      if (nsVal) setErrors((p) => ({ ...p, landHC: "" }));
-      setResult(null);
+    // Если выбрали населённый пункт (k1) — подставляем макс. БНС
+    if (name === "k1") {
+      // Получаем все значения БНС (НС) для выбранного региона
+      const regionBands = NS_BY_REGION_POP[value];
+      if (regionBands) {
+        // Из объекта вида { p5: 120, p10: 160, … } берём все числа и находим максимум
+        const maxNs = Math.max(...Object.values(regionBands));
+        // Обновляем сразу k1 и landHC
+        setForm((prev) => ({
+          ...prev,
+          k1: value,
+          landHC: maxNs.toString(),
+        }));
+      } else {
+        // Если региона нет в словаре — просто сохраняем выбор
+        setForm((prev) => ({ ...prev, k1: value }));
+      }
       return;
     }
 
-    /* ────────────────────────────────────────────────
-     2. Все остальные поля
-     ──────────────────────────────────────────────── */
-    setForm((prev) => ({ ...prev, [name]: val }));
-    setResult(null);
-
-    // моментальная проверка числовых полей
-    if (numericFields.includes(name as any)) {
-      validateField(name as (typeof numericFields)[number], String(val));
+    // Старая логика для wallOption
+    if (name === "wallOption") {
+      const [material, life, cost] = value.split("|");
+      setForm((prev) => ({
+        ...prev,
+        wallOption: value,
+        wallMaterial: material,
+        wallServiceLife: life,
+        wallBaseCost: cost,
+      }));
+      return;
     }
+
+    // Для всех остальных полей — просто сохраняем значение
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   /* ---------- calculations ---------- */
@@ -574,9 +827,8 @@ const validateForm = () => {
     const baseRate = BASE_RATE_BY_K1[form.k1] ?? 100;
     const k1 =
       form.k1 === "bishkek"
-        ? (BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ??
-          1)
-        : (K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1);
+        ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
+        : K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1;
     const k2 = parseFloat(form.k2 || "1");
     const k3 = parseFloat(form.k3 || "1");
     const k4Base = K4_OPTIONS.find((o) => o.value === form.k4)?.coeff ?? 1;
@@ -616,7 +868,9 @@ const validateForm = () => {
       { label: "Формула", value: "A.пл = Баз.ст*S*K1*K2*K3*K4 + Нз" },
       {
         label: "Формула",
-        value: `${baseRate}*${areaObject}*${k1}*${k2}*${k3}*${k4.toFixed(2)} + ${Nz.toFixed(2)}`,
+        value: `${baseRate}*${areaObject}*${k1}*${k2}*${k3}*${k4.toFixed(
+          2
+        )} + ${Nz.toFixed(2)}`,
       },
       {
         label: "Нз (формула)",
@@ -667,8 +921,7 @@ const validateForm = () => {
 
     /* ---------- 3. вывод результата ---------- */
     setResult(calc);
-    setPrintData(calc);
-
+    setData(calc);
     setIsSubmitting(false);
     setShowCheck(false);
     barValue.set(0);
@@ -845,11 +1098,28 @@ const validateForm = () => {
                         className={selectBase}
                       >
                         <option value="">выберите из списка</option>
-                        {options.map((o, i) => (
-                          <option key={`${o.value}-${i}`} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
+                        {options.map((o) => {
+                          // по-умолчанию: "label – value"
+                          let text = `${o.label} – ${o.value}`;
+
+                          // если это K1 или Коммерческое использование земли, и у объекта есть coeff
+                          if (
+                            (id === "k1" || id === "landUse") &&
+                            "coeff" in o
+                          ) {
+                            text = `${o.label} – ${o.coeff}`;
+                          }
+                          // если это K4, тоже показываем coeff
+                          else if (id === "k4" && "coeff" in o) {
+                            text = `${o.label} – ${o.coeff}`;
+                          }
+
+                          return (
+                            <option key={o.value} value={o.value}>
+                              {text}
+                            </option>
+                          );
+                        })}
                       </select>
                       <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
                         <svg
@@ -893,7 +1163,7 @@ const validateForm = () => {
                           <option value="">выберите зону</option>
                           {BISHKEK_ZONE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
-                              {o.label}
+                              {`${o.label}            - ${o.coeff}`}
                             </option>
                           ))}
                         </select>
@@ -969,6 +1239,128 @@ const validateForm = () => {
                     </p>
                   )}
                 </motion.div>
+                {/* NS (налоговая стоимость) – two aligned inputs */}
+                <motion.div variants={fadeInUp} custom={nextAi()}>
+                  <label
+                    htmlFor="landHC"
+                    className="block mb-1 text-[#0A2D8F] font-medium"
+                  >
+                    БНС (налоговая стоимость м², сом)
+                  </label>
+
+                  <div className="flex gap-3 items-start">
+                    {/* --- Первый (основной) инпут остаётся как был --- */}
+                    <input
+                      style={{ width: "80%" }}
+                      type="text"
+                      id="landHC"
+                      name="landHC"
+                      value={form.landHC}
+                      onChange={handleChange}
+                      placeholder="авто после выбора КН"
+                      className={fieldClass("landHC") + " flex-1"}
+                    />
+
+                    {/* --- Второй инпут + кнопки --- */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        style={{ width: "6rem" }}
+                        type="text"
+                        id="landHC2"
+                        name="landHC2"
+                        value={isEditingHC2 ? draftHC2 : form.landHC2}
+                        onChange={(e) =>
+                          isEditingHC2 && setDraftHC2(e.target.value)
+                        }
+                        readOnly={!isEditingHC2}
+                        placeholder="..."
+                        className={fieldClass("landHC2")}
+                      />
+
+                      {/* Кнопки управления */}
+                      {!isEditingHC2 ? (
+                        /* ✏  ВКЛЮЧИТЬ редактирование */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDraftHC2(form.landHC2); // заполняем черновик
+                            setIsEditingHC2(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 transition"
+                          title="Изменить"
+                        >
+                          <FiEdit className="w-5 h-5" />
+                        </button>
+                      ) : (
+                        <>
+                          {/* ✔  СОХРАНИТЬ */}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!/^\d+(\.\d+)?$/.test(draftHC2)) {
+                                setErrors((p) => ({
+                                  ...p,
+                                  landHC2: "Только число",
+                                }));
+                                return;
+                              }
+                              await persist(draftHC2); // PATCH → backend
+                              setForm((p) => ({ ...p, landHC2: draftHC2 }));
+                              setIsEditingHC2(false);
+                            }}
+                            className="text-green-600 hover:text-green-800 transition"
+                            title="Сохранить"
+                          >
+                            <FiCheck className="w-5 h-5" />
+                          </button>
+                          {/* ✖  ОТМЕНА */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraftHC2(form.landHC2); // откат
+                              setIsEditingHC2(false);
+                              setErrors((p) => ({ ...p, landHC2: "" }));
+                            }}
+                            className="text-red-600 hover:text-red-800 transition"
+                            title="Отмена"
+                          >
+                            <FiX className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {errors.landHC && (
+                    <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
+                  )}
+                  {errors.landHC2 && (
+                    <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
+                  )}
+                </motion.div>
+                <motion.div variants={fadeInUp} custom={nextAi()}>
+                  <label
+                    htmlFor="kInflation"
+                    className="block mb-1 text-[#0A2D8F] font-medium"
+                  >
+                    Ки (индекс инфляции)
+                  </label>
+                  <input
+                    type="text"
+                    id="kInflation"
+                    name="kInflation"
+                    value={form.kInflation} /* ← по умолчанию “1.108” */
+                    onChange={handleChange}
+                    placeholder="1.108"
+                    className={fieldClass("kInflation")}
+                  />
+                  {errors.kInflation && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.kInflation}
+                    </p>
+                  )}
+                </motion.div>
+
                 <motion.div
                   variants={fadeInUp}
                   custom={nextAi()}
@@ -995,130 +1387,6 @@ const validateForm = () => {
             {/* ===== RIGHT COLUMN ===== */}
             <div className={glassPanel}>
               {/* =====  ВЫБОР ФИЛИАЛА / КОМПАНИИ ===== */}
-
-              {/* NS (налоговая стоимость) – two aligned inputs */}
-              <motion.div variants={fadeInUp} custom={nextAi()}>
-                <label
-                  htmlFor="landHC"
-                  className="block mb-1 text-[#0A2D8F] font-medium"
-                >
-                  БНС (налоговая стоимость м², сом)
-                </label>
-
-                <div className="flex gap-3 items-start">
-                  {/* --- Первый (основной) инпут остаётся как был --- */}
-                  <input
-                    style={{ width: "80%" }}
-                    type="text"
-                    id="landHC"
-                    name="landHC"
-                    value={form.landHC}
-                    onChange={handleChange}
-                    placeholder="авто после выбора КН"
-                    className={fieldClass("landHC") + " flex-1"}
-                  />
-
-                  {/* --- Второй инпут + кнопки --- */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      style={{ width: "6rem" }}
-                      type="text"
-                      id="landHC2"
-                      name="landHC2"
-                      value={isEditingHC2 ? draftHC2 : form.landHC2}
-                      onChange={(e) =>
-                        isEditingHC2 && setDraftHC2(e.target.value)
-                      }
-                      readOnly={!isEditingHC2}
-                      placeholder="..."
-                      className={fieldClass("landHC2")}
-                    />
-
-                    {/* Кнопки управления */}
-                    {!isEditingHC2 ? (
-                      /* ✏  ВКЛЮЧИТЬ редактирование */
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDraftHC2(form.landHC2); // заполняем черновик
-                          setIsEditingHC2(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 transition"
-                        title="Изменить"
-                      >
-                        <FiEdit className="w-5 h-5" />
-                      </button>
-                    ) : (
-                      <>
-                        {/* ✔  СОХРАНИТЬ */}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!/^\d+(\.\d+)?$/.test(draftHC2)) {
-                              setErrors((p) => ({
-                                ...p,
-                                landHC2: "Только число",
-                              }));
-                              return;
-                            }
-                            await persist(draftHC2); // PATCH → backend
-                            setForm((p) => ({ ...p, landHC2: draftHC2 }));
-                            setIsEditingHC2(false);
-                          }}
-                          className="text-green-600 hover:text-green-800 transition"
-                          title="Сохранить"
-                        >
-                          <FiCheck className="w-5 h-5" />
-                        </button>
-                        {/* ✖  ОТМЕНА */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDraftHC2(form.landHC2); // откат
-                            setIsEditingHC2(false);
-                            setErrors((p) => ({ ...p, landHC2: "" }));
-                          }}
-                          className="text-red-600 hover:text-red-800 transition"
-                          title="Отмена"
-                        >
-                          <FiX className="w-5 h-5" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {errors.landHC && (
-                  <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
-                )}
-                {errors.landHC2 && (
-                  <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
-                )}
-              </motion.div>
-              <motion.div variants={fadeInUp} custom={nextAi()}>
-                <label
-                  htmlFor="kInflation"
-                  className="block mb-1 text-[#0A2D8F] font-medium"
-                >
-                  Ки (индекс инфляции)
-                </label>
-                <input
-                  type="text"
-                  id="kInflation"
-                  name="kInflation"
-                  value={form.kInflation} /* ← по умолчанию “1.108” */
-                  onChange={handleChange}
-                  placeholder="1.108"
-                  className={fieldClass("kInflation")}
-                />
-                {errors.kInflation && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.kInflation}
-                  </p>
-                )}
-              </motion.div>
-
-              {/* 3.  ⬇ ПЕРЕНОСИМ “Коммерческое использование земли” СЮДА */}
               <motion.div
                 className="relative"
                 variants={fadeInUp}
@@ -1133,17 +1401,18 @@ const validateForm = () => {
                 <select
                   id="landUse"
                   name="landUse"
-                  value={form.landUse}
+                  value={String(form.landUse)}
                   onChange={handleChange}
                   className={selectBase}
                 >
                   <option value="">выберите из списка</option>
                   {COMMERCIAL_USE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
-                      {o.label}
+                      {`${o.label} – ${o.coeff}`}
                     </option>
                   ))}
                 </select>
+
                 <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
                   <svg
                     className="w-5 h-5 text-gray-500"
@@ -1161,6 +1430,7 @@ const validateForm = () => {
                 </div>
               </motion.div>
               {/* C (ставка налога) */}
+              {/* === Ваш существующий блок с input для C (landTaxRate) === */}
               <motion.div variants={fadeInUp} custom={nextAi()}>
                 <label
                   htmlFor="landTaxRate"
@@ -1182,6 +1452,189 @@ const validateForm = () => {
                     {errors.landTaxRate}
                   </p>
                 )}
+              </motion.div>
+              <motion.div
+                variants={fadeInUp}
+                custom={nextAi()}
+                className="relative"
+              >
+                <label
+                  htmlFor="defC"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  C – ставка налога от налогооблагаемой стоимости объекта
+                </label>
+                <select
+                  id="defC"
+                  name="defC"
+                  value={String(form.defC)}
+                  onChange={handleChange}
+                  className={selectBase}
+                >
+                  <option value="">— выберите C —</option>
+                  {C_RATE_OPTIONS.map((opt) => (
+                    <option key={opt.label} value={opt.coeff.toString()}>
+                      {`${opt.label} – ${opt.coeff}%`}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </motion.div>
+
+              <motion.div
+                variants={fadeInUp}
+                custom={nextAi()}
+                className="relative"
+              >
+                <label
+                  htmlFor="defKp"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  Кр – региональный коэффициент
+                </label>
+                <select
+                  id="defKp"
+                  name="defKp"
+                  value={form.defKp}
+                  onChange={handleChange}
+                  className={selectBase}
+                >
+                  <option value="">— выберите Кр —</option>
+                  {REGIONAL_KP_OPTIONS.map((group) => (
+                    <optgroup key={group.region} label={group.region}>
+                      {group.options.map((opt) => (
+                        <option key={opt.label} value={opt.coeff.toString()}>
+                          {`${opt.label} – ${opt.coeff}`}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </motion.div>
+
+              {/* ← сюда, сразу после defKp, вставляем defKn: */}
+              <motion.div
+                variants={fadeInUp}
+                custom={nextAi()}
+                className="relative"
+              >
+                <label
+                  htmlFor="defKn"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  Кн – коэффициент функционального назначения имущества
+                </label>
+                <select
+                  id="defKn"
+                  name="defKn"
+                  value={form.defKn}
+                  onChange={handleChange}
+                  className={selectBase}
+                >
+                  <option value="">— выберите из списка —</option>
+                  {KN_FUNCTIONAL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.coeff.toString()}>
+                      {`${o.label} – ${o.coeff}`}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+                {errors.defKn && (
+                  <p className="text-red-500 text-sm mt-1">{errors.defKn}</p>
+                )}
+              </motion.div>
+              {/* ——— Материал стен ——— */}
+              {/* ——— Селект “Материал + срок + коэфф” ——— */}
+              <motion.div
+                variants={fadeInUp}
+                custom={nextAi()}
+                className="relative"
+              >
+                <label
+                  htmlFor="wallOption"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  Материал и срок эксплуатации
+                </label>
+                <select
+                  id="wallOption"
+                  name="wallOption"
+                  value={String(form.wallOption)}
+                  onChange={handleChange}
+                  className={selectBase}
+                >
+                  <option value="">— выберите —</option>
+                  {Object.entries(WALL_LIFE_OPTIONS).map(([mat, opts]) => (
+                    <optgroup key={mat} label={mat}>
+                      {opts.map((o) => (
+                        <option
+                          key={o.label}
+                          value={`${mat}|${o.label}|${o.coeff}`}
+                        >
+                          {`${o.label} — ${o.coeff}`}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
               </motion.div>
               {[
                 { id: "nds", label: "НДС, %" },
