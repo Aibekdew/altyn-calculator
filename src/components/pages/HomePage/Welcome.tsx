@@ -18,6 +18,23 @@ import { Check } from "lucide-react";
 /* =============================================================
    CONSTANTS – styles that reproduce the look & feel of the mockup
    ============================================================= */
+/* 🔄 ФАЙЛДЫН ӨТӨ БАШЫНДА (импорттордон кийин) */
+const num = (raw: string | number | undefined | null): number => {
+  if (raw === undefined || raw === null) return 0;
+  if (typeof raw === "number") return isFinite(raw) ? raw : 0;
+
+  // 1) миңдик бөлгүчтөрүн, боштуктарды, апостроф/ноябрды алып салабыз
+  // 2) үтүрдү чекитке айлантабыз
+  const cleaned = String(raw)
+    .replace(/[\s'\u202F\u00A0]/g, "") // тонко-широкие пробелы да
+    .replace(",", ".")
+    .trim();
+
+  return parseFloat(cleaned) || 0;
+};
+
+const toNum = (v: string) => parseFloat(v.replace(",", ".").trim()) || 0; // "" → 0
+
 const bgGradient =
   "bg-gradient-to-br bg-cover bg-fixed via-[#0038B8] to-[#148CFF]";
 const containerOuter = `relative min-h-screen flex flex-col justify-start lg:justify-center px-4 lg:px-8 py-8 ${bgGradient}`;
@@ -87,6 +104,7 @@ interface FormState {
   areaBuilding: string; // ← Площадь здания (новое)
   k1zone: string; // ← зона Бишкека
   landUse: string;
+  landScale: string;
   kInflation: string;
   nds: string; // ← новое
   nsp: string; // ← новое
@@ -141,28 +159,27 @@ export const K3_OPTIONS = SORT_BY_LABEL([
 const K4_GROUPS: Record<number, string[]> = {
   2.5: ["Платёжные терминалы", "Банкоматы"],
   1.7: [
-    "Авиакасса",
-    "Выездная касса",
-    "Гостиница",
-    "Кафе",
-    "Ломбард",
-    "Ночной клуб",
-    "Обменный пункт",
-    "Пункт приема платежей",
+    "Гостиница", // ← гостиница-отель
     "Ресторан",
+    "Кафе",
     "Сауна",
     "Бассейн",
-    "Банковские услуги",
-    "Бильярд",
     "Баня",
+    "Обменный пункт",
+    "Ломбард",
+    "Ночной клуб",
+    "Авиакасса",
+    "Выездная касса",
+    "Пункт приёма платежей",
   ],
+
   1.6: [
     "Буфет",
     "Компьютерные услуги и ремонт компьютерной техники",
     "Копировальные услуги",
     "Ларёк",
     "Магазин",
-    "Оборудования для телекоммуникаций",
+    "Оборудование для телекоммуникаций",
     "Размещение рекламы",
     "Реставрация одежды",
     "Салон красоты",
@@ -172,11 +189,22 @@ const K4_GROUPS: Record<number, string[]> = {
     "Торговая точка",
     "Установка антенн",
   ],
-  1.5: ["Гараж", "Сооружения для ремонта и тех. обслуживания автотранспорта"],
-  1.4: ["Кинотеатр", "Офис", "Помещения"],
-  1.3: ["Химчистка", "Ремонт обуви"],
-  1.2: ["Автостоянка", "Склад"],
-  1: ["Производство", "Производственные услуги", "Разное"],
+
+  1.5: ["Автосервисы, ремзоны, гаражи и парковки"],
+  1.4: ["Офис", "Кинотеатр", "Прочие помещения"],
+  1.3: ["Ремонт обуви", "Химчистка", "Копировальные услуги"],
+  1.2: ["Складские помещения"],
+  1.0: [
+    "Квартира (жилое помещение)",
+    "Другое целевое использование, не указанное выше",
+  ],
+
+  0.8: [
+    "Зерно-, фрукто- и овощехранилища, прочие объекты для сельхоз-производителей",
+  ],
+  0.7: ["Столовая / буфет при режимных объектах"],
+  0.6: ["Кружки, ДЮСШ, спорт- и культ-объекты, благотворительные фонды"],
+  0.5: ["Ветеринарные лаборатории, учебно-реабилитационные центры, библиотеки"],
 };
 
 // в начале файла, рядом с K4_OPTIONS и COMMERCIAL_USE_OPTIONS
@@ -259,6 +287,7 @@ export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
 /* ------------------------------------------------------------------ */
 const KP_ITEMS: [string, number][] = [
   /* значения не меняли — просто оставили как есть */
+  ["жилые здания и помещения", 1.0],
   ["автозаправочные станции", 10.0],
   ["автостоянки, предприятия автосервиса", 4.5],
   [
@@ -343,7 +372,9 @@ export const AFFILIATE_OPTIONS: Affiliate[] = [
 const numericFields = [
   "areaObject",
   "areaLand",
+  "areaBuilding",
   "landHC",
+  "landScale",
   "landHC2",
   "landTaxRate",
   "kInflation",
@@ -351,17 +382,17 @@ const numericFields = [
   "nsp",
   "profit",
 ] as const;
-
 const initialForm: FormState = {
   k1: "",
   k2: "",
   k3: "",
   k4: "",
   areaObject: "",
+  landScale: "",
   areaLand: "",
   streetAccess: false,
   landHC: "",
-  landHC2: "1", // ← было ""  ➜  ставим "1" по умолчанию
+  landHC2: "1.2", // ← было ""  ➜  ставим "1" по умолчанию
   landTaxRate: "",
   areaBuilding: "",
   k1zone: "",
@@ -693,7 +724,7 @@ const Welcome: FC = () => {
   ): boolean => {
     let msg = "";
     if (!value.trim()) msg = "Заполните поле";
-    else if (isNaN(Number(value))) msg = "Введите число";
+    else if (isNaN(toNum(value))) msg = "Введите число";
 
     if (!silent) setErrors((p) => ({ ...p, [field]: msg }));
     return msg === "";
@@ -776,34 +807,40 @@ const Welcome: FC = () => {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
+    const target = e.target;
+    const name = target.name;
 
+    // безопасно определяем «чекбокс это или нет»
+    const newValue: string | boolean =
+      target instanceof HTMLInputElement && target.type === "checkbox"
+        ? target.checked
+        : target.value;
     // Если выбрали населённый пункт (k1) — подставляем макс. БНС
-    if (name === "k1") {
+    if (name === "k1" && typeof newValue === "string") {
       // Получаем все значения БНС (НС) для выбранного региона
-      const regionBands = NS_BY_REGION_POP[value];
+      const regionBands = NS_BY_REGION_POP[newValue];
       if (regionBands) {
         // Из объекта вида { p5: 120, p10: 160, … } берём все числа и находим максимум
         const maxNs = Math.max(...Object.values(regionBands));
         // Обновляем сразу k1 и landHC
         setForm((prev) => ({
           ...prev,
-          k1: value,
+          k1: newValue,
           landHC: maxNs.toString(),
         }));
       } else {
         // Если региона нет в словаре — просто сохраняем выбор
-        setForm((prev) => ({ ...prev, k1: value }));
+        setForm((prev) => ({ ...prev, k1: newValue }));
       }
       return;
     }
 
     // Старая логика для wallOption
-    if (name === "wallOption") {
-      const [material, life, cost] = value.split("|");
+    if (name === "wallOption" && typeof newValue === "string") {
+      const [material, life, cost] = newValue.split("|");
       setForm((prev) => ({
         ...prev,
-        wallOption: value,
+        wallOption: newValue,
         wallMaterial: material,
         wallServiceLife: life,
         wallBaseCost: cost,
@@ -812,9 +849,13 @@ const Welcome: FC = () => {
     }
 
     // Для всех остальных полей — просто сохраняем значение
+    if (name === "streetAccess" && typeof newValue === "boolean") {
+      setForm((prev) => ({ ...prev, streetAccess: newValue }));
+      return;
+    }
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: newValue,
     }));
   };
 
@@ -823,65 +864,205 @@ const Welcome: FC = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    /* ---------- 1. вычисляем всё, как раньше ---------- */
-    const baseRate = BASE_RATE_BY_K1[form.k1] ?? 100;
+    // локалдык helper: «42,7» → 42.7  |  «» → 0
+    const num = (v: string) => parseFloat(v.replace(",", ".")) || 0;
+
+    /* -------- 1. даяр сандар -------- */
+    const areaBuilding = num(form.areaBuilding); // P
+    const wallBaseCost = num(form.wallBaseCost); // C (база стены)
+    const kpRegional = num(form.defKp); // Кр
+    const knFunctional = num(form.defKn); // Кн
+    const propertyRate = num(form.defC); // C (ставка)
+
+    /* -------- 2. зона Бишкек/другое -------- */
+    const ksZone =
+      form.k1 === "bishkek"
+        ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
+        : 1;
+
+    /* -------- 3. налог на имущество -------- */
+    let propertyTax = 0;
+    let propertyHC = 0;
+
+    if (areaBuilding && wallBaseCost && propertyRate) {
+      propertyHC =
+        wallBaseCost * areaBuilding * kpRegional * ksZone * knFunctional;
+      propertyTax = (propertyHC * propertyRate) / 100 / 12;
+    }
+
+    /* -------- 4. аренда помещения -------- */
+    let baseRate = BASE_RATE_BY_K1[form.k1] ?? 100;
+    if (num(form.areaObject) > 1000) baseRate = 70;
+
     const k1 =
       form.k1 === "bishkek"
         ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
         : K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1;
-    const k2 = parseFloat(form.k2 || "1");
-    const k3 = parseFloat(form.k3 || "1");
+
+    let k2 = num(form.k2 || "1");
+    const k3 = num(form.k3 || "1");
     const k4Base = K4_OPTIONS.find((o) => o.value === form.k4)?.coeff ?? 1;
     const k4 = form.streetAccess ? k4Base + 0.1 : k4Base;
+    if (!form.k4) {
+      form.k4 =
+        K4_OPTIONS.find((o) => o.label.startsWith("Квартира"))?.value ?? "";
+    }
 
-    const areaObject = parseFloat(form.areaObject || "0");
-    const areaLand = parseFloat(form.areaLand || "0");
+    if (
+      form.k4 &&
+      K4_OPTIONS.find((o) => o.value === form.k4)?.label === "Кинотеатр"
+    )
+      k2 = 0.5;
 
-    const landHC = parseFloat(form.landHC || "0");
-    const landHC2Coeff = parseFloat(form.landHC2 || "1");
-    const landTaxRate = parseFloat(form.landTaxRate || "0");
+    const areaObject = num(form.areaObject); // S
+    const areaLand = num(form.areaLand); // S земли
+    const landHC = num(form.landHC); // БНС
+    const landHC2Coeff = num(form.landHC2 || "1.2");
+    const landTaxRate = num(form.landTaxRate);
+    // ----  эта пара строк в начале расчётов handleSubmit  ----
+    if (!form.landUse) {
+      form.landUse = "жилые здания и помещения";
+    }
+
     const landUseCoeff =
-      COMMERCIAL_USE_OPTIONS.find((o) => o.value === form.landUse)?.coeff ?? 1;
-    const kInflation = parseFloat(form.kInflation || "1");
+      num(
+        COMMERCIAL_USE_OPTIONS.find((o) => o.value === form.landUse)?.coeff + ""
+      ) || 1;
 
+    const kInflation = num(form.kInflation);
+
+    /* -------- 5. формулы -------- */
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
-    const nsFull = landHC * landHC2Coeff * landUseCoeff * kInflation;
-    const Nz =
-      areaLand && landTaxRate ? (nsFull * areaLand * landTaxRate) / 12 : 0;
-    const total = rent + Nz;
+    const landScale = num(form.landScale || "1"); // ➍  "" → 1
+    const nsFull =
+      (landHC * landHC2Coeff * landUseCoeff * kInflation) / landScale; // ➎
+    const baseHC =
+      (landHC * landHC2Coeff * landUseCoeff * kInflation) / landScale;
+    const HC = baseHC * areaLand;
+    const cRate =
+      landTaxRate > 1
+        ? landTaxRate / 100
+        : landTaxRate === 1
+        ? 0.01
+        : landTaxRate; // 0.5, 0.01 и т.д.
+    const Nz = (HC * areaLand * cRate) / 12;
+    // cRate = 1 % → 0.01, демек /12 /100  →  /1200
 
-    const profitPct = parseFloat(form.profit || "0");
-    const subtotal = total + (total * profitPct) / 100;
+    const Apl = rent + Nz; // ①
+    const totalNoVat = Apl + propertyTax; // ① + налог на имущество
 
-    const ndsPct = parseFloat(form.nds || "0");
-    const nspPct = parseFloat(form.nsp || "0");
+    const profitPct = num(form.profit) || 0;
+    const subtotal = totalNoVat + (totalNoVat * profitPct) / 100;
+
+    const ndsPct = num(form.nds);
+    const nspPct = num(form.nsp);
     const ndsValue = (subtotal * ndsPct) / 100;
     const nspValue = (subtotal * nspPct) / 100;
-    const grandTotal = subtotal + ndsValue + nspValue;
 
-    const fmt = (v: number) =>
+    const grandTotal = subtotal + ndsValue + nspValue;
+    const perSq = areaObject ? grandTotal / areaObject : 0;
+
+    const fmt = (v: number, digits = 2) =>
       v
-        ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} сом`
+        ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: digits })} сом`
         : "—";
+    const fmtNum = (v: number, digits = 2) =>
+      v.toLocaleString("ru-RU", { maximumFractionDigits: digits });
 
     const rows = [
-      { label: "Формула", value: "A.пл = Баз.ст*S*K1*K2*K3*K4 + Нз" },
+      /* ───── 1. А.пл. ───── */
       {
-        label: "Формула",
-        value: `${baseRate}*${areaObject}*${k1}*${k2}*${k3}*${k4.toFixed(
-          2
-        )} + ${Nz.toFixed(2)}`,
+        label: "1. А.пл. = Баз.ст. × S × K1 × K2 × K3 × K4 + Нз",
+        value: fmt(Apl),
       },
       {
-        label: "Нз (формула)",
-        value: `(${landTaxRate} × ${landHC} × ${form.landHC2} × ${kInflation} × ${landUseCoeff}) / 12`,
+        label: "А.пл. – размер месячной арендной платы за помещение",
+        value: fmt(rent),
       },
-      { label: "Нз", value: fmt(Nz) },
-      { label: `НДС (${ndsPct} %)`, value: fmt(ndsValue) },
-      { label: `НСП (${nspPct} %)`, value: fmt(nspValue) },
-      { label: "Итого без налогов", value: fmt(total) },
-      { label: "Итого с рентабельностью", value: fmt(subtotal) },
-      { label: "Итого с налогами", value: fmt(grandTotal) },
+      {
+        label: "Баз.ст. – базовая ставка месячной арендной платы за 1 кв.м",
+        value: fmt(baseRate),
+      },
+      {
+        label: "S – площадь помещений и сооружений",
+        value: fmtNum(areaObject) + " кв.м",
+      },
+      {
+        label: "K1 – коэффициент населённого пункта здания",
+        value: fmtNum(k1),
+      },
+      { label: "K2 – коэффициент тех. состояния помещения", value: fmtNum(k2) },
+      { label: "K3 – коэффициент тех. обустройства здания", value: fmtNum(k3) },
+      {
+        label: "K4 – отраслевой коэффициент использования помещения",
+        value: fmtNum(k4),
+      },
+      { label: "Нз. = (HC × S × C) / 12", value: fmt(Nz) },
+      { label: "", value: "" },
+
+      {
+        label: "Нз – плата за пользование земельным участком (налог)",
+        value: fmt(Nz),
+      },
+      { label: `HC = БНС × Ki × Kз × Кн`, value: fmt(nsFull) },
+      { label: "БНС – базовая ставка земельного налога", value: fmt(landHC) },
+      {
+        label: "S – площадь земельного участка помещения",
+        value: fmtNum(areaLand) + " кв.м",
+      },
+      { label: "Ki – коэффициент инфляции", value: form.kInflation },
+      {
+        label: "Кн – коэффициент функционального назначения имущества",
+        value: fmtNum(landUseCoeff), // ← чоң сан (4,5…22,5)
+      },
+      {
+        label: "Kз – зональный коэффициент (эконо-план.)",
+        value: form.landHC2,
+      },
+      {
+        label: "C – ставка земельного налога",
+        value: fmtNum(landTaxRate, 1) + " %",
+      },
+      { label: "", value: "" },
+
+      /* ───── 2. Налог на имущество ───── */
+      { label: "2. Налог на имущество:", value: fmt(propertyTax) },
+      {
+        label:
+          "Налогооблагаемая стоимость имущества (здания) 0,8 % × HC × кв.м / 12 =",
+        value: fmt(propertyTax),
+      },
+      { label: `HC = C × P × Кр × Ks × Кн = ${fmtNum(propertyHC)}`, value: "" },
+      {
+        label: "C – ставка налога от налогооблагаемой стоимости объекта",
+        value: fmtNum(propertyRate, 1) + " %",
+      },
+      { label: "P – площадь объекта", value: fmtNum(areaBuilding) + " кв.м" },
+      { label: "Kш – делитель (из инпута)", value: fmtNum(landScale) },
+
+      { label: "Кр – региональный коэффициент", value: fmtNum(kpRegional) },
+      { label: "Ks – зональный коэффициент", value: fmtNum(ksZone) },
+      {
+        label: "Кн – коэффициент функционального назначения имущества",
+        value: fmtNum(knFunctional),
+      },
+      { label: "", value: "" },
+
+      /* ───── итоги ───── */
+      {
+        label: "Итого минимальная месячная арендная плата:",
+        value: fmt(totalNoVat),
+      },
+      { label: `НДС ${fmtNum(ndsPct, 0)} %`, value: fmt(ndsValue) },
+      { label: `НСП ${fmtNum(nspPct, 0)} %`, value: fmt(nspValue) },
+      {
+        label: "Итого минимальная месячная арендная плата с налогами:",
+        value: fmt(grandTotal),
+      },
+      {
+        label: "Итого месячная оплата с налогами за 1 кв. метр",
+        value: fmt(perSq),
+      },
     ];
 
     const description =
@@ -891,14 +1072,16 @@ const Welcome: FC = () => {
     const calc: CalcResult = {
       rent,
       landTax: Nz,
-      total,
+      propertyTax,
       ndsValue,
       nspValue,
       grandTotal,
+      perSq, // ← добавили сюда
       finalTotal: grandTotal,
       rows,
       affiliate: form.affiliate,
       description,
+      total: 0,
     };
 
     /* ---------- 2. анимируем кнопку ---------- */
@@ -1194,6 +1377,10 @@ const Welcome: FC = () => {
                     label: "Площадь арендуемого объекта (S)",
                   },
                   { id: "areaLand", label: "Площадь земельного участка (S)" },
+                  {
+                    id: "areaBuilding",
+                    label: "Площадь объекта для налога на имущество (P)",
+                  },
                 ].map(({ id, label }) => (
                   <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
                     <label
@@ -1216,30 +1403,32 @@ const Welcome: FC = () => {
                     )}
                   </motion.div>
                 ))}
-                {/* в правой колонке добавьте сразу после areaObject */}
+                {/* ---- Kш – делитель 1101,4 ---- */}
                 <motion.div variants={fadeInUp} custom={nextAi()}>
                   <label
-                    htmlFor="areaBuilding"
+                    htmlFor="landScale"
                     className="block mb-1 text-[#0A2D8F] font-medium"
                   >
-                    Площадь здания (Sз)
+                    Kш – делитель (вместо 1101,4)
                   </label>
+
                   <input
                     type="text"
-                    id="areaBuilding"
-                    name="areaBuilding"
-                    value={form.areaBuilding}
+                    id="landScale"
+                    name="landScale"
+                    value={String(form.landScale)}
                     onChange={handleChange}
                     placeholder="Введите число"
-                    className={fieldClass("areaBuilding")}
+                    className={fieldClass("landScale")}
                   />
-                  {errors.areaBuilding && (
+
+                  {errors.landScale && (
                     <p className="text-red-500 text-sm mt-1">
-                      {errors.areaBuilding}
+                      {errors.landScale}
                     </p>
                   )}
                 </motion.div>
-                {/* NS (налоговая стоимость) – two aligned inputs */}
+
                 <motion.div variants={fadeInUp} custom={nextAi()}>
                   <label
                     htmlFor="landHC"
@@ -1338,28 +1527,6 @@ const Welcome: FC = () => {
                     <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
                   )}
                 </motion.div>
-                <motion.div variants={fadeInUp} custom={nextAi()}>
-                  <label
-                    htmlFor="kInflation"
-                    className="block mb-1 text-[#0A2D8F] font-medium"
-                  >
-                    Ки (индекс инфляции)
-                  </label>
-                  <input
-                    type="text"
-                    id="kInflation"
-                    name="kInflation"
-                    value={form.kInflation} /* ← по умолчанию “1.108” */
-                    onChange={handleChange}
-                    placeholder="1.108"
-                    className={fieldClass("kInflation")}
-                  />
-                  {errors.kInflation && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.kInflation}
-                    </p>
-                  )}
-                </motion.div>
 
                 <motion.div
                   variants={fadeInUp}
@@ -1387,6 +1554,28 @@ const Welcome: FC = () => {
             {/* ===== RIGHT COLUMN ===== */}
             <div className={glassPanel}>
               {/* =====  ВЫБОР ФИЛИАЛА / КОМПАНИИ ===== */}
+              <motion.div variants={fadeInUp} custom={nextAi()}>
+                <label
+                  htmlFor="kInflation"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  Ки (индекс инфляции)
+                </label>
+                <input
+                  type="text"
+                  id="kInflation"
+                  name="kInflation"
+                  value={form.kInflation} /* ← по умолчанию “1.108” */
+                  onChange={handleChange}
+                  placeholder="1.108"
+                  className={fieldClass("kInflation")}
+                />
+                {errors.kInflation && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.kInflation}
+                  </p>
+                )}
+              </motion.div>
               <motion.div
                 className="relative"
                 variants={fadeInUp}
@@ -1396,7 +1585,7 @@ const Welcome: FC = () => {
                   htmlFor="landUse"
                   className="block mb-1 text-[#0A2D8F] font-medium"
                 >
-                  Коммерческое использование земли
+                  Кн – коэффициент функционального назначения имущества
                 </label>
                 <select
                   id="landUse"
@@ -1471,7 +1660,7 @@ const Welcome: FC = () => {
                   onChange={handleChange}
                   className={selectBase}
                 >
-                  <option value="">— выберите C —</option>
+                  <option value="">выберите из списка</option>
                   {C_RATE_OPTIONS.map((opt) => (
                     <option key={opt.label} value={opt.coeff.toString()}>
                       {`${opt.label} – ${opt.coeff}%`}
@@ -1513,7 +1702,7 @@ const Welcome: FC = () => {
                   onChange={handleChange}
                   className={selectBase}
                 >
-                  <option value="">— выберите Кр —</option>
+                  <option value="">выберите из списка</option>
                   {REGIONAL_KP_OPTIONS.map((group) => (
                     <optgroup key={group.region} label={group.region}>
                       {group.options.map((opt) => (
@@ -1560,7 +1749,7 @@ const Welcome: FC = () => {
                   onChange={handleChange}
                   className={selectBase}
                 >
-                  <option value="">— выберите из списка —</option>
+                  <option value="">выберите из списка</option>
                   {KN_FUNCTIONAL_OPTIONS.map((o) => (
                     <option key={o.value} value={o.coeff.toString()}>
                       {`${o.label} – ${o.coeff}`}
@@ -1606,7 +1795,7 @@ const Welcome: FC = () => {
                   onChange={handleChange}
                   className={selectBase}
                 >
-                  <option value="">— выберите —</option>
+                  <option value="">выберите из списка</option>
                   {Object.entries(WALL_LIFE_OPTIONS).map(([mat, opts]) => (
                     <optgroup key={mat} label={mat}>
                       {opts.map((o) => (

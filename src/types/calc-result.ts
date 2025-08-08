@@ -7,13 +7,14 @@ export interface CalcRow {
 export interface CalcResult {
   rent: number;
   landTax: number;
-  total: number;
+  propertyTax: number;
   ndsValue: number;
   nspValue: number;
   grandTotal: number;
+  perSq: number; // ← новое
+  finalTotal: number;
   rows: CalcRow[];
-  finalTotal: number; // ← ДОБАВИЛИ!
-
-  affiliate?: string; // выбранный филиал
-  description?: string; // произвольный текст (адрес-описание)
+  affiliate?: string;
+  description?: string;
+  total: number;
 }
