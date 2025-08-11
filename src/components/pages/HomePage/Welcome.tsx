@@ -19,18 +19,21 @@ import { Check } from "lucide-react";
    CONSTANTS – styles that reproduce the look & feel of the mockup
    ============================================================= */
 /* 🔄 ФАЙЛДЫН ӨТӨ БАШЫНДА (импорттордон кийин) */
+// «12 345,67», «44,497.55», «1 200 %», «26,75 сом/м²» → число
 const num = (raw: string | number | undefined | null): number => {
   if (raw === undefined || raw === null) return 0;
   if (typeof raw === "number") return isFinite(raw) ? raw : 0;
 
-  // 1) миңдик бөлгүчтөрүн, боштуктарды, апостроф/ноябрды алып салабыз
-  // 2) үтүрдү чекитке айлантабыз
-  const cleaned = String(raw)
-    .replace(/[\s'\u202F\u00A0]/g, "") // тонко-широкие пробелы да
-    .replace(",", ".")
-    .trim();
+  let s = String(raw)
+    .trim()
+    .replace(/[%а-яА-Яa-z/]+/g, "") // убрать % и текст вроде "сом", "кв.м"
+    .replace(/[\s'\u202F\u00A0]/g, ""); // убрать пробелы/узкие пробелы/апострофы
 
-  return parseFloat(cleaned) || 0;
+  // Если есть и запятая, и точка → запятая = разделитель тысяч → убираем запятые.
+  if (s.includes(",") && s.includes(".")) s = s.replace(/,/g, "");
+  else s = s.replace(",", "."); // иначе запятая = десятичная
+
+  return parseFloat(s) || 0;
 };
 
 const toNum = (v: string) => parseFloat(v.replace(",", ".").trim()) || 0; // "" → 0
@@ -716,6 +719,8 @@ const Welcome: FC = () => {
 
   const [isEditingHC2, setIsEditingHC2] = useState(false); // флаг «режим редактирования»
   const [draftHC2, setDraftHC2] = useState(form.landHC2);
+  // вместо if (!/^\d+(\.\d+)?$/.test(draftHC2)) { ... }
+
   /* ---------- validation helpers ---------- */
   const validateField = (
     field: (typeof numericFields)[number],
@@ -723,11 +728,19 @@ const Welcome: FC = () => {
     silent = false
   ): boolean => {
     let msg = "";
-    if (!value.trim()) msg = "Заполните поле";
-    else if (isNaN(toNum(value))) msg = "Введите число";
-
+    if (value.trim() && isNaN(num(value))) msg = "Введите число"; // пусто = ок, считаем нулём
     if (!silent) setErrors((p) => ({ ...p, [field]: msg }));
     return msg === "";
+  };
+
+  const validateForm = () => {
+    const newErr: Record<string, string> = {};
+    numericFields.forEach((f) => {
+      if (!validateField(f, String(form[f]), true)) newErr[f] = "Введите число";
+    });
+    if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
+    setErrors(newErr);
+    return !Object.keys(newErr).length; // только явные ошибки
   };
 
   const WALL_LIFE_OPTIONS: Record<string, LifeOption[]> = {
@@ -784,24 +797,6 @@ const Welcome: FC = () => {
     "Прочие материалы и материалы для временных помещений": [
       { label: "Вне зависимости от срока эксплуатации", coeff: 8000 },
     ],
-  };
-  const validateForm = () => {
-    const newErr: Record<string, string> = {};
-
-    numericFields.forEach((f) => {
-      if (!validateField(f, String(form[f]), true))
-        newErr[f] = !String(form[f]).trim()
-          ? "Заполните поле"
-          : "Введите число";
-    });
-
-    // popBand больше не проверяем
-    // if (!form.popBand) newErr.popBand = "Выберите диапазон населения";
-
-    if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
-
-    setErrors(newErr);
-    return !Object.keys(newErr).length;
   };
 
   const handleChange = (
@@ -865,7 +860,6 @@ const Welcome: FC = () => {
     if (!validateForm()) return;
 
     // локалдык helper: «42,7» → 42.7  |  «» → 0
-    const num = (v: string) => parseFloat(v.replace(",", ".")) || 0;
 
     /* -------- 1. даяр сандар -------- */
     const areaBuilding = num(form.areaBuilding); // P
@@ -901,13 +895,11 @@ const Welcome: FC = () => {
 
     let k2 = num(form.k2 || "1");
     const k3 = num(form.k3 || "1");
-    const k4Base = K4_OPTIONS.find((o) => o.value === form.k4)?.coeff ?? 1;
+    const k4Selected =
+      form.k4 ||
+      (K4_OPTIONS.find((o) => o.label.startsWith("Квартира"))?.value ?? "");
+    const k4Base = K4_OPTIONS.find((o) => o.value === k4Selected)?.coeff ?? 1;
     const k4 = form.streetAccess ? k4Base + 0.1 : k4Base;
-    if (!form.k4) {
-      form.k4 =
-        K4_OPTIONS.find((o) => o.label.startsWith("Квартира"))?.value ?? "";
-    }
-
     if (
       form.k4 &&
       K4_OPTIONS.find((o) => o.value === form.k4)?.label === "Кинотеатр"
@@ -920,36 +912,33 @@ const Welcome: FC = () => {
     const landHC2Coeff = num(form.landHC2 || "1.2");
     const landTaxRate = num(form.landTaxRate);
     // ----  эта пара строк в начале расчётов handleSubmit  ----
-    if (!form.landUse) {
-      form.landUse = "жилые здания и помещения";
-    }
 
+    const landUseValue = form.landUse || "жилые здания и помещения";
     const landUseCoeff =
-      num(
-        COMMERCIAL_USE_OPTIONS.find((o) => o.value === form.landUse)?.coeff + ""
-      ) || 1;
+      COMMERCIAL_USE_OPTIONS.find((o) => o.value === landUseValue)?.coeff ?? 1;
 
     const kInflation = num(form.kInflation);
 
     /* -------- 5. формулы -------- */
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
-    const landScale = num(form.landScale || "1"); // ➍  "" → 1
-    const nsFull =
-      (landHC * landHC2Coeff * landUseCoeff * kInflation) / landScale; // ➎
-    const baseHC =
-      (landHC * landHC2Coeff * landUseCoeff * kInflation) / landScale;
-    const HC = baseHC * areaLand;
+    const landScale = Math.max(num(form.landScale || "1"), 1); // делитель не даём свести к 0
+    const HC_per_m2 = landHC * landHC2Coeff * landUseCoeff * kInflation; // Kш не делим
+
     const cRate =
       landTaxRate > 1
         ? landTaxRate / 100
         : landTaxRate === 1
         ? 0.01
-        : landTaxRate; // 0.5, 0.01 и т.д.
-    const Nz = (HC * areaLand * cRate) / 12;
-    // cRate = 1 % → 0.01, демек /12 /100  →  /1200
+        : landTaxRate;
 
-    const Apl = rent + Nz; // ①
-    const totalNoVat = Apl + propertyTax; // ① + налог на имущество
+    const Nz = (HC_per_m2 * areaLand * cRate) / 12;
+    const nsFull = HC_per_m2; // для вывода в таблицу
+    // cRate = 1 % → 0.01, демек /12 /100  →  /1200
+    const landTaxRateDisplay =
+      landTaxRate <= 1 ? landTaxRate * 100 : landTaxRate;
+
+    const Apl = rent + Nz;
+    const totalNoVat = Apl + propertyTax;
 
     const profitPct = num(form.profit) || 0;
     const subtotal = totalNoVat + (totalNoVat * profitPct) / 100;
@@ -960,7 +949,8 @@ const Welcome: FC = () => {
     const nspValue = (subtotal * nspPct) / 100;
 
     const grandTotal = subtotal + ndsValue + nspValue;
-    const perSq = areaObject ? grandTotal / areaObject : 0;
+    const denominator = areaObject || areaLand;
+    const perSq = denominator ? grandTotal / denominator : 0;
 
     const fmt = (v: number, digits = 2) =>
       v
@@ -1021,7 +1011,7 @@ const Welcome: FC = () => {
       },
       {
         label: "C – ставка земельного налога",
-        value: fmtNum(landTaxRate, 1) + " %",
+        value: fmtNum(landTaxRateDisplay, 2) + " %",
       },
       { label: "", value: "" },
 
@@ -1063,6 +1053,7 @@ const Welcome: FC = () => {
         label: "Итого месячная оплата с налогами за 1 кв. метр",
         value: fmt(perSq),
       },
+      { label: `HC = БНС × Ki × Kз × Кн`, value: fmt(nsFull) },
     ];
 
     const description =
@@ -1467,13 +1458,13 @@ const Welcome: FC = () => {
                       />
 
                       {/* Кнопки управления */}
+                      {/* ✏  ВКЛЮЧИТЬ редактирование */}
                       {!isEditingHC2 ? (
-                        /* ✏  ВКЛЮЧИТЬ редактирование */
                         <button
                           type="button"
                           onClick={() => {
-                            setDraftHC2(form.landHC2); // заполняем черновик
-                            setIsEditingHC2(true);
+                            setDraftHC2(form.landHC2); // текущее в черновик
+                            setIsEditingHC2(true); // включаем режим редактирования
                           }}
                           className="text-blue-600 hover:text-blue-800 transition"
                           title="Изменить"
@@ -1486,15 +1477,19 @@ const Welcome: FC = () => {
                           <button
                             type="button"
                             onClick={async () => {
-                              if (!/^\d+(\.\d+)?$/.test(draftHC2)) {
+                              const parsed = num(draftHC2);
+                              if (!isFinite(parsed) || parsed <= 0) {
                                 setErrors((p) => ({
                                   ...p,
-                                  landHC2: "Только число",
+                                  landHC2: "Введите число > 0",
                                 }));
                                 return;
                               }
-                              await persist(draftHC2); // PATCH → backend
-                              setForm((p) => ({ ...p, landHC2: draftHC2 }));
+                              await persist(String(parsed));
+                              setForm((p) => ({
+                                ...p,
+                                landHC2: String(parsed),
+                              }));
                               setIsEditingHC2(false);
                             }}
                             className="text-green-600 hover:text-green-800 transition"
@@ -1506,7 +1501,7 @@ const Welcome: FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setDraftHC2(form.landHC2); // откат
+                              setDraftHC2(form.landHC2);
                               setIsEditingHC2(false);
                               setErrors((p) => ({ ...p, landHC2: "" }));
                             }}
@@ -1524,7 +1519,9 @@ const Welcome: FC = () => {
                     <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
                   )}
                   {errors.landHC2 && (
-                    <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.landHC2}
+                    </p>
                   )}
                 </motion.div>
 
