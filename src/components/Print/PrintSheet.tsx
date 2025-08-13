@@ -39,57 +39,51 @@ const PrintSheet: React.FC = () => {
     <div
       id="print-area"
       className="
-        hidden print:block
-        w-[170mm] mx-auto
-        font-[14pt] leading-tight text-[14px]
-      "
+      hidden print:block
+      w-[200mm] mx-auto
+      text-[12px] leading-[1.25]
+    "
     >
       {/* ─────────── Описание ─────────── */}
       {description && (
-        <p className="whitespace-pre-wrap text-center text-[14px] font-bold mb-4">
-          {description}
-        </p>
+        <p className="whitespace-pre-wrap text-center mb-2">{description}</p>
       )}
 
       {/* ─────────── Название филиала ─────────── */}
       {affiliateLabel && (
-        <p className="text-center text-[14px] font-medium mb-2">
-          {affiliateLabel}
-        </p>
+        <p className="text-center font-medium mb-1">{affiliateLabel}</p>
       )}
 
       {/* ─────────── Заголовок и итог ─────────── */}
-      <h1 className="text-center  font-bold uppercase tracking-wide mb-1 text-[14px] ">
+      <h1 className="text-center font-bold uppercase tracking-wide mb-1 text-[12px]">
         расчёт арендной платы
       </h1>
-      <p className="text-center font-semibold mb-6 text-[14px] ">
+      <p className="text-center font-semibold mb-3">
         Итоговая стоимость:&nbsp;
-        {data.finalTotal.toLocaleString("ru-RU", {
-          maximumFractionDigits: 2,
-        })}
+        {data.finalTotal.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}
         &nbsp;сом&nbsp;/ месяц
       </p>
 
       {/* ─────────── Таблица ─────────── */}
       <table className="w-full border border-black border-collapse">
         <thead>
-          <tr className="bg-[#003680] text-white">
-            <th className="w-[65%] text-left font-semibold p-2">Показатель</th>
-            <th className="text-right font-semibold p-2">Значение</th>
+          <tr className=" text-black">
+            <th className="w-[65%] text-left font-semibold">Показатель</th>
+            <th className="text-right font-semibold">Значение</th>
           </tr>
         </thead>
         <tbody>
           {data.rows.map((r, i) => (
             <tr key={i} className={i % 2 ? "bg-gray-50" : "bg-white"}>
-              <td className="p-2 align-top">{r.label}</td>
-              <td className="p-2 text-right whitespace-nowrap">{r.value}</td>
+              <td className="align-top">{r.label}</td>
+              <td className="text-right whitespace-nowrap">{r.value}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
       {/* ─────────── Подписи ─────────── */}
-      <div className="flex font-bold justify-between mt-10 items-center">
+      <div className="signatures flex font-bold justify-between mt-6 items-center">
         <div>
           <p className="mb-[-1px]">{ps?.left_title ?? "Начальник УЭАиП"}</p>
           <p>{ps?.left_subtitle ?? "ОАО «Кыргызалтын»"}</p>
