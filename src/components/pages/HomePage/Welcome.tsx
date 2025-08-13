@@ -101,6 +101,7 @@ interface FormState {
   areaObject: string;
   areaLand: string;
   streetAccess: boolean;
+  defKz: string;
   landHC: string;
   landHC2: string; // *** extra small field next to landHC ***
   landTaxRate: string;
@@ -384,6 +385,7 @@ const numericFields = [
   "nds",
   "nsp",
   "profit",
+  "defKz",
 ] as const;
 const initialForm: FormState = {
   k1: "",
@@ -398,9 +400,10 @@ const initialForm: FormState = {
   landHC2: "1.2", // ← было ""  ➜  ставим "1" по умолчанию
   landTaxRate: "",
   areaBuilding: "",
+  defKz: "0",
   k1zone: "",
   landUse: "",
-  kInflation: "1.108",
+  kInflation: "0",
   nds: "0", // ← «по умолчанию 0 %»
   nsp: "0",
   profit: "",
@@ -442,13 +445,20 @@ const NS_BY_K1: Record<string, { ns: number; hc2: number }> = {
   batken: { ns: 50, hc2: 0.3 },
 };
 
-const getBandsForRegion = (region: string) =>
-  POP_BANDS.filter(
+const getBandsForRegion = (region: string) => {
+  const key = REGION_KEY_ALIASES[region] ?? region;
+  return POP_BANDS.filter(
     (b) =>
-      NS_BY_REGION_POP[region]?.[
+      NS_BY_REGION_POP[key]?.[
         b.value as keyof (typeof NS_BY_REGION_POP)[string]
       ] !== undefined
   );
+};
+
+// 🔗 Регион алиастары: "issyk_kul_reg" → "issyk_kul"
+const REGION_KEY_ALIASES: Record<string, string> = {
+  issyk_kul_reg: "issyk_kul",
+};
 
 /** БНС (сом/м²) по регионам и диапазонам численности населения
  *  источник — ст. 404 НК КР (ред. 2023) */
@@ -812,19 +822,18 @@ const Welcome: FC = () => {
         : target.value;
     // Если выбрали населённый пункт (k1) — подставляем макс. БНС
     if (name === "k1" && typeof newValue === "string") {
-      // Получаем все значения БНС (НС) для выбранного региона
-      const regionBands = NS_BY_REGION_POP[newValue];
+      // алиас колдонобуз: областьты курорттук зона сеткасына байлайбыз
+      const key = REGION_KEY_ALIASES[newValue] ?? newValue;
+      const regionBands = NS_BY_REGION_POP[key];
+
       if (regionBands) {
-        // Из объекта вида { p5: 120, p10: 160, … } берём все числа и находим максимум
         const maxNs = Math.max(...Object.values(regionBands));
-        // Обновляем сразу k1 и landHC
         setForm((prev) => ({
           ...prev,
           k1: newValue,
-          landHC: maxNs.toString(),
+          landHC: maxNs.toString(), // мисалы, Иссык-Көл үчүн 210 болуп түшөт
         }));
       } else {
-        // Если региона нет в словаре — просто сохраняем выбор
         setForm((prev) => ({ ...prev, k1: newValue }));
       }
       return;
@@ -865,9 +874,11 @@ const Welcome: FC = () => {
 
     const landHC = num(form.landHC); // БНС
     const landHC2Coeff = num(form.landHC2 || "1.2"); // Kз
+    const kzProperty = num(form.defKz || "0"); // Кз – зональный коэффициент (имущество)
+
     const kInflation = num(form.kInflation); // Ки
     const landTaxRate = num(form.landTaxRate); // C (ставка земли)
-    const ksh = Math.max(num(form.landScale || "1101.4"), 1); // Kш — делитель (из инпута)
+    const ksh = Math.max(num(form.landScale || "0"), 1); // Kш — делитель (из инпута)
 
     const ndsPct = num(form.nds); // НДС, %
     const nspPct = num(form.nsp); // НСП, %
@@ -953,8 +964,12 @@ const Welcome: FC = () => {
     let propertyHC = 0;
     let propertyTax = 0;
     if (areaBuilding && wallBaseCost && propertyRate) {
+      // НС (имущество) = C(база стены) × P × Кр × Кз × Кн
+      const kzProperty = num(form.defKz || "0"); // ← ЖАҢЫ: Кз (имущество)
+
       propertyHC =
-        wallBaseCost * areaBuilding * kpRegional * ksZone * knFunctional;
+        wallBaseCost * areaBuilding * kpRegional * kzProperty * knFunctional;
+
       propertyTax = (propertyHC * propertyRate) / 100 / 12;
     }
 
@@ -1014,7 +1029,7 @@ const Welcome: FC = () => {
         value: fmt(NS_excel),
       },
       { label: "БНС – базовая ставка земельного налога", value: fmt(landHC) },
-      { label: "Ki – индекс инфляции", value: form.kInflation },
+      { label: "Kи – индекс инфляции", value: form.kInflation },
       { label: "Kз – зональный коэффициент", value: form.landHC2 },
       {
         label: "Кн – коэффициент функционального назначения имущества (земля)",
@@ -1022,7 +1037,7 @@ const Welcome: FC = () => {
       },
       { label: "Kш – делитель (из поля ввода)", value: fmtNum(ksh) },
       {
-        label: "S – площадь земельного участка",
+        label: "S – площадь земельного участка помощений",
         value: fmtNum(areaLand) + " кв.м",
       },
       {
@@ -1033,21 +1048,27 @@ const Welcome: FC = () => {
 
       { label: "2. Налог на имущество (в месяц)", value: fmt(propertyTax) },
       {
-        label: `Налогооблагаемая стоимость: C(база) × P × Кр × Ks × Кн = ${fmtNum(
+        label: `Налогооблагаемая стоимость: C(база) × P × Кр × Кз × Кн = ${fmtNum(
           propertyHC
         )}`,
         value: "",
       },
+
       {
         label: "C – ставка налога от налогооблагаемой стоимости объекта",
         value: fmtNum(propertyRate, 1) + " %",
       },
       {
-        label: "P – площадь объекта (для налога на имущество)",
+        label: "П – площадь объекта (для налога на имущество)",
         value: fmtNum(areaBuilding) + " кв.м",
       },
       { label: "Кр – региональный коэффициент", value: fmtNum(kpRegional) },
-      { label: "Ks – зональный (для Бишкека)", value: fmtNum(ksZone) },
+
+      {
+        label: "Кз – зональный коэффициент (имущество)",
+        value: fmtNum(kzProperty),
+      },
+
       {
         label: "Кн – функциональный (для имущества)",
         value: fmtNum(knFunctional),
@@ -1248,20 +1269,25 @@ const Welcome: FC = () => {
                 {[
                   {
                     id: "k1",
-                    label: "Населённый пункт (КН)",
+                    label: "К1 – коэффициент месторасположения здания",
                     options: K1_OPTIONS,
                   },
                   {
                     id: "k2",
-                    label: "Техническое состояние помещения (К2)",
+                    label: "К2 – техническое состояние помещения",
                     options: K2_OPTIONS,
                   },
                   {
                     id: "k3",
-                    label: "Техническое обустройство здания (К3)",
+                    label: "К3 – коэффициент тех.обустроенности здания",
                     options: K3_OPTIONS,
                   },
-                  { id: "k4", label: "Цель аренды (К4)", options: K4_OPTIONS },
+                  {
+                    id: "k4",
+                    label:
+                      "К4 – отраслевой коэффициент использования помещения",
+                    options: K4_OPTIONS,
+                  },
                 ].map(({ id, label, options }) => (
                   <Fragment key={id}>
                     {/* сам селект */}
@@ -1380,13 +1406,13 @@ const Welcome: FC = () => {
                 {[
                   {
                     id: "areaObject",
-                    label: "Площадь арендуемого объекта (S)",
+                    label: "S – площадь помещений и сооружений",
                   },
-                  { id: "areaLand", label: "Площадь земельного участка (S)" },
                   {
-                    id: "areaBuilding",
-                    label: "Площадь объекта для налога на имущество (P)",
+                    id: "areaLand",
+                    label: "S – площадь земельного участка помощений",
                   },
+                  { id: "areaBuilding", label: "П – площадь объекта (кв.м)" },
                 ].map(({ id, label }) => (
                   <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
                     <label
@@ -1415,7 +1441,7 @@ const Welcome: FC = () => {
                     htmlFor="landScale"
                     className="block mb-1 text-[#0A2D8F] font-medium"
                   >
-                    Kш – делитель (вместо 1101,4)
+                    Общие кв.м объекта
                   </label>
 
                   <input
@@ -1436,110 +1462,139 @@ const Welcome: FC = () => {
                 </motion.div>
 
                 <motion.div variants={fadeInUp} custom={nextAi()}>
-                  <label
-                    htmlFor="landHC"
-                    className="block mb-1 text-[#0A2D8F] font-medium"
-                  >
-                    БНС (налоговая стоимость м², сом)
-                  </label>
-
-                  <div className="flex gap-3 items-start">
-                    {/* --- Первый (основной) инпут остаётся как был --- */}
-                    <input
-                      style={{ width: "80%" }}
-                      type="text"
-                      id="landHC"
-                      name="landHC"
-                      value={form.landHC}
-                      onChange={handleChange}
-                      placeholder="авто после выбора КН"
-                      className={fieldClass("landHC") + " flex-1"}
-                    />
-
-                    {/* --- Второй инпут + кнопки --- */}
-                    <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start gap-3">
+                    {/* БНС – слева, лейбл над инпутом */}
+                    <div className="w-full">
+                      <label
+                        htmlFor="landHC"
+                        className="block mb-1 text-[#0A2D8F] font-medium"
+                      >
+                        БНС – базовая ставка земельного налога
+                      </label>
                       <input
-                        style={{ width: "6rem" }}
                         type="text"
-                        id="landHC2"
-                        name="landHC2"
-                        value={isEditingHC2 ? draftHC2 : form.landHC2}
-                        onChange={(e) =>
-                          isEditingHC2 && setDraftHC2(e.target.value)
-                        }
-                        readOnly={!isEditingHC2}
-                        placeholder="..."
-                        className={fieldClass("landHC2")}
+                        id="landHC"
+                        name="landHC"
+                        value={form.landHC}
+                        onChange={handleChange}
+                        placeholder="авто после выбора КН"
+                        className={fieldClass("landHC")}
                       />
+                      {errors.landHC && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.landHC}
+                        </p>
+                      )}
+                    </div>
 
-                      {/* Кнопки управления */}
-                      {/* ✏  ВКЛЮЧИТЬ редактирование */}
-                      {!isEditingHC2 ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDraftHC2(form.landHC2); // текущее в черновик
-                            setIsEditingHC2(true); // включаем режим редактирования
-                          }}
-                          className="text-blue-600 hover:text-blue-800 transition"
-                          title="Изменить"
-                        >
-                          <FiEdit className="w-5 h-5" />
-                        </button>
-                      ) : (
-                        <>
-                          {/* ✔  СОХРАНИТЬ */}
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const parsed = num(draftHC2);
-                              if (!isFinite(parsed) || parsed <= 0) {
-                                setErrors((p) => ({
-                                  ...p,
-                                  landHC2: "Введите число > 0",
-                                }));
-                                return;
-                              }
-                              await persist(String(parsed));
-                              setForm((p) => ({
-                                ...p,
-                                landHC2: String(parsed),
-                              }));
-                              setIsEditingHC2(false);
-                            }}
-                            className="text-green-600 hover:text-green-800 transition"
-                            title="Сохранить"
-                          >
-                            <FiCheck className="w-5 h-5" />
-                          </button>
-                          {/* ✖  ОТМЕНА */}
+                    {/* Кз – справа, лейбл над инпутом (ширина фикс) */}
+                    <div className="w-40">
+                      <label
+                        htmlFor="landHC2"
+                        className="block mb-1 text-[#0A2D8F] font-medium"
+                      >
+                        Кз
+                      </label>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          id="landHC2"
+                          name="landHC2"
+                          value={isEditingHC2 ? draftHC2 : form.landHC2}
+                          onChange={(e) =>
+                            isEditingHC2 && setDraftHC2(e.target.value)
+                          }
+                          readOnly={!isEditingHC2}
+                          placeholder="Кз"
+                          className={fieldClass("landHC2")}
+                        />
+
+                        {!isEditingHC2 ? (
                           <button
                             type="button"
                             onClick={() => {
                               setDraftHC2(form.landHC2);
-                              setIsEditingHC2(false);
-                              setErrors((p) => ({ ...p, landHC2: "" }));
+                              setIsEditingHC2(true);
                             }}
-                            className="text-red-600 hover:text-red-800 transition"
-                            title="Отмена"
+                            className="text-blue-600 hover:text-blue-800 transition"
+                            title="Изменить"
                           >
-                            <FiX className="w-5 h-5" />
+                            <FiEdit className="w-5 h-5" />
                           </button>
-                        </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const parsed = num(draftHC2);
+                                if (!isFinite(parsed) || parsed <= 0) {
+                                  setErrors((p) => ({
+                                    ...p,
+                                    landHC2: "Введите число > 0",
+                                  }));
+                                  return;
+                                }
+                                await persist(String(parsed));
+                                setForm((p) => ({
+                                  ...p,
+                                  landHC2: String(parsed),
+                                }));
+                                setIsEditingHC2(false);
+                              }}
+                              className="text-green-600 hover:text-green-800 transition"
+                              title="Сохранить"
+                            >
+                              <FiCheck className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDraftHC2(form.landHC2);
+                                setIsEditingHC2(false);
+                                setErrors((p) => ({ ...p, landHC2: "" }));
+                              }}
+                              className="text-red-600 hover:text-red-800 transition"
+                              title="Отмена"
+                            >
+                              <FiX className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {errors.landHC2 && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.landHC2}
+                        </p>
                       )}
                     </div>
                   </div>
+                </motion.div>
 
-                  {errors.landHC && (
-                    <p className="text-red-500 text-sm mt-1">{errors.landHC}</p>
-                  )}
-                  {errors.landHC2 && (
+                {/* =====  ВЫБОР ФИЛИАЛА / КОМПАНИИ ===== */}
+                <motion.div variants={fadeInUp} custom={nextAi()}>
+                  <label
+                    htmlFor="kInflation"
+                    className="block mb-1 text-[#0A2D8F] font-medium"
+                  >
+                    Ки – индекс инфляции
+                  </label>
+                  <input
+                    type="text"
+                    id="kInflation"
+                    name="kInflation"
+                    value={form.kInflation} /* ← по умолчанию “0” */
+                    onChange={handleChange}
+                    placeholder="0"
+                    className={fieldClass("kInflation")}
+                  />
+                  {errors.kInflation && (
                     <p className="text-red-500 text-sm mt-1">
-                      {errors.landHC2}
+                      {errors.kInflation}
                     </p>
                   )}
                 </motion.div>
-
                 <motion.div
                   variants={fadeInUp}
                   custom={nextAi()}
@@ -1565,29 +1620,6 @@ const Welcome: FC = () => {
 
             {/* ===== RIGHT COLUMN ===== */}
             <div className={glassPanel}>
-              {/* =====  ВЫБОР ФИЛИАЛА / КОМПАНИИ ===== */}
-              <motion.div variants={fadeInUp} custom={nextAi()}>
-                <label
-                  htmlFor="kInflation"
-                  className="block mb-1 text-[#0A2D8F] font-medium"
-                >
-                  Ки (индекс инфляции)
-                </label>
-                <input
-                  type="text"
-                  id="kInflation"
-                  name="kInflation"
-                  value={form.kInflation} /* ← по умолчанию “1.108” */
-                  onChange={handleChange}
-                  placeholder="1.108"
-                  className={fieldClass("kInflation")}
-                />
-                {errors.kInflation && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.kInflation}
-                  </p>
-                )}
-              </motion.div>
               <motion.div
                 className="relative"
                 variants={fadeInUp}
@@ -1637,7 +1669,7 @@ const Welcome: FC = () => {
                   htmlFor="landTaxRate"
                   className="block mb-1 text-[#0A2D8F] font-medium"
                 >
-                  C (ставка налога, коэффициент)
+                  C – ставка земельного налога
                 </label>
                 <input
                   type="text"
@@ -1741,7 +1773,27 @@ const Welcome: FC = () => {
                   </svg>
                 </div>
               </motion.div>
-
+              {/* Кз – зональный коэффициент */}
+              <motion.div variants={fadeInUp} custom={nextAi()}>
+                <label
+                  htmlFor="defKz"
+                  className="block mb-1 text-[#0A2D8F] font-medium"
+                >
+                  Кз – зональный коэффициент
+                </label>
+                <input
+                  type="text"
+                  id="defKz"
+                  name="defKz"
+                  value={String(form.defKz)}
+                  onChange={handleChange}
+                  placeholder="Введите число"
+                  className={fieldClass("defKz")}
+                />
+                {errors.defKz && (
+                  <p className="text-red-500 text-sm mt-1">{errors.defKz}</p>
+                )}
+              </motion.div>
               {/* ← сюда, сразу после defKp, вставляем defKn: */}
               <motion.div
                 variants={fadeInUp}
@@ -1838,9 +1890,9 @@ const Welcome: FC = () => {
                 </div>
               </motion.div>
               {[
-                { id: "nds", label: "НДС, %" },
-                { id: "nsp", label: "НСП, %" },
-                { id: "profit", label: "Рентабельность, %" }, // ← НОВОЕ
+                { id: "nds", label: "НДС – %" },
+                { id: "nsp", label: "НСП – %" },
+                { id: "profit", label: "Рентабельность – %" }, // сүрөттө жок, бирок стилди бир кылып койдум
               ].map(({ id, label }) => (
                 <motion.div key={id} variants={fadeInUp} custom={nextAi()}>
                   <label
@@ -1949,7 +2001,9 @@ const Welcome: FC = () => {
                     <tbody className="divide-y divide-gray-200">
                       {result.rows.map((r, i) => (
                         <tr key={i} className={i % 2 ? "bg-gray-50" : ""}>
-                          <td className="p-4 text-gray-700">{r.label}</td>
+                          <td className="p-4 text-gray-700 mt-[-15px]">
+                            {r.label}
+                          </td>
                           <td className="p-4 text-right text-gray-900">
                             {r.value}
                           </td>

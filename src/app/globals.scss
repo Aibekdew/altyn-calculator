@@ -20,52 +20,85 @@
   animation: slideInUp 0.3s ease forwards;
 }
 
-
-/* ===================  ПЕЧАТНЫЙ РЕЖИМ  =================== */
 @media print {
-
-  /* 1. отключаем стандартные колонтитулы браузера */
   @page {
     size: A4 portrait;
-    margin: 0;                         /* колонтитулы просто некуда вставить */
-
-    /* margin-boxes (Chrome 97+) */
-    @top-left      { content: none }
-    @top-center    { content: none }
-    @top-right     { content: none }
-    @bottom-left   { content: none }
-    @bottom-center { content: none }
-    @bottom-right  { content: none }
+    margin: 0;
+    @top-left {
+      content: none;
+    }
+    @top-center {
+      content: none;
+    }
+    @top-right {
+      content: none;
+    }
+    @bottom-left {
+      content: none;
+    }
+    @bottom-center {
+      content: none;
+    }
+    @bottom-right {
+      content: none;
+    }
   }
 
-  /* 2. прячем всё, что не относится к печати  */
-  body * { visibility: hidden !important; }
+  /* Экран элементтерин жашыруу */
+  body * {
+    visibility: hidden !important;
+  }
 
-  /* 3. показываем только #print-area            */
-  #print-area, #print-area * {
+  /* Принт аймакты гана көрсөтүү */
+  #print-area,
+  #print-area * {
     visibility: visible !important;
     position: static !important;
   }
 
-  /* 4. располагаем лист от краёв страницы       */
+  /* Бир баракка батуу үчүн компакттуу типографика */
   #print-area {
-    position: static !important; /* главное: убрать absolute/inset */
+    width: 200mm !important; /* кененирээк – аз сапка бөлүнөт */
+    margin: 0 auto !important;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  /* 5. базовая типографика таблицы              */
+
+  /* Таблица: тыгыз padding */
   #print-area table th,
   #print-area table td {
     border: 1px solid #000;
-    padding: 3px 5px;
+    padding: 5px 7px !important; /* 3x5 → 2x4 */
   }
 
-  /* 6. убираем dev-overlay next-js */
+  /* Баш аттарды/параграфтарды тыгыздатуу */
+  #print-area h1 {
+    margin: 0 0 2mm 0 !important;
+  }
+  #print-area p {
+    margin: 0 0 2mm 0 !important;
+  }
+
+  /* Сап ортосунда бөлүнүп кетпесин */
+  #print-area tbody tr {
+    page-break-inside: avoid;
+  }
+
+  /* Подпистердин ички боштугу бир аз */
+  #print-area .signatures {
+    margin-top: 6mm !important;
+  }
+
+  /* Next.js dev overlay */
   .nextjs-dev-error-overlay,
   .nextjs-toast-errors {
     display: none !important;
   }
-    #print-area img {
-    -webkit-print-color-adjust: exact !important;  /* Chrome / Edge */
-    print-color-adjust: exact !important;           /* Firefox */
-  }
 }
-
+@media print {
+  #print-area {
+    zoom: 0.8;
+  } /* кааласаң 0.90…0.95 менен ойнотуңуз */
+}
