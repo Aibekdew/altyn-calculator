@@ -854,76 +854,81 @@ const Welcome: FC = () => {
     }));
   };
 
-  /* ---------- calculations ---------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // локалдык helper: «42,7» → 42.7  |  «» → 0
+    /* -------- 1) Читаем числа из формы -------- */
+    const areaObject = num(form.areaObject); // S (площадь арендуемого объекта)
+    const areaLand = num(form.areaLand); // S земли
+    const areaBuilding = num(form.areaBuilding); // P (для налога на имущество)
 
-    /* -------- 1. даяр сандар -------- */
-    const areaBuilding = num(form.areaBuilding); // P
-    const wallBaseCost = num(form.wallBaseCost); // C (база стены)
+    const landHC = num(form.landHC); // БНС
+    const landHC2Coeff = num(form.landHC2 || "1.2"); // Kз
+    const kInflation = num(form.kInflation); // Ки
+    const landTaxRate = num(form.landTaxRate); // C (ставка земли)
+    const ksh = Math.max(num(form.landScale || "1101.4"), 1); // Kш — делитель (из инпута)
+
+    const ndsPct = num(form.nds); // НДС, %
+    const nspPct = num(form.nsp); // НСП, %
+    const profitPct = num(form.profit) || 0; // Рентабельность, %
+
+    // Налог на имущество (вводимые)
+    const propertyRate = num(form.defC); // C, % от налогооблагаемой стоимости
     const kpRegional = num(form.defKp); // Кр
     const knFunctional = num(form.defKn); // Кн
-    const propertyRate = num(form.defC); // C (ставка)
+    const wallBaseCost = num(form.wallBaseCost); // C (база стены)
 
-    /* -------- 2. зона Бишкек/другое -------- */
-    const ksZone =
-      form.k1 === "bishkek"
-        ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
-        : 1;
-
-    /* -------- 3. налог на имущество -------- */
-    let propertyTax = 0;
-    let propertyHC = 0;
-
-    if (areaBuilding && wallBaseCost && propertyRate) {
-      propertyHC =
-        wallBaseCost * areaBuilding * kpRegional * ksZone * knFunctional;
-      propertyTax = (propertyHC * propertyRate) / 100 / 12;
-    }
-
-    /* -------- 4. аренда помещения -------- */
+    /* -------- 2) Коэфф. локации / зональности -------- */
+    // базовая ставка по нас.пункту
     let baseRate = BASE_RATE_BY_K1[form.k1] ?? 100;
-    if (num(form.areaObject) > 1000) baseRate = 70;
+    if (areaObject > 1000) baseRate = 70;
 
+    // K1: для Бишкека берём зональный коэффициент города,
+    //     для остальных — coeff из K1_OPTIONS
     const k1 =
       form.k1 === "bishkek"
         ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
         : K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1;
 
+    // K2, K3
     let k2 = num(form.k2 || "1");
     const k3 = num(form.k3 || "1");
+
+    // K4 (с возможной надбавкой +0.1 за «отдельный вход вдоль улицы»)
     const k4Selected =
       form.k4 ||
       (K4_OPTIONS.find((o) => o.label.startsWith("Квартира"))?.value ?? "");
     const k4Base = K4_OPTIONS.find((o) => o.value === k4Selected)?.coeff ?? 1;
     const k4 = form.streetAccess ? k4Base + 0.1 : k4Base;
+
+    // Для «Кинотеатр» — по твоему правилу понижаем K2
     if (
       form.k4 &&
       K4_OPTIONS.find((o) => o.value === form.k4)?.label === "Кинотеатр"
-    )
+    ) {
       k2 = 0.5;
+    }
 
-    const areaObject = num(form.areaObject); // S
-    const areaLand = num(form.areaLand); // S земли
-    const landHC = num(form.landHC); // БНС
-    const landHC2Coeff = num(form.landHC2 || "1.2");
-    const landTaxRate = num(form.landTaxRate);
-    // ----  эта пара строк в начале расчётов handleSubmit  ----
-
+    // Кн (земельное функциональное) из справочника COMMERCIAL_USE_OPTIONS
     const landUseValue = form.landUse || "жилые здания и помещения";
     const landUseCoeff =
       COMMERCIAL_USE_OPTIONS.find((o) => o.value === landUseValue)?.coeff ?? 1;
 
-    const kInflation = num(form.kInflation);
+    // Ks — зональность Бишкека для налога на имущество (если надо)
+    const ksZone =
+      form.k1 === "bishkek"
+        ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
+        : 1;
 
-    /* -------- 5. формулы -------- */
+    /* -------- 3) Аренда помещения -------- */
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
-    const landScale = Math.max(num(form.landScale || "1"), 1); // делитель не даём свести к 0
-    const HC_per_m2 = landHC * landHC2Coeff * landUseCoeff * kInflation; // Kш не делим
 
+    /* -------- 4) Земельный налог по «скану» --------
+     HC_unit_excel = (БНС × Ки × Kз × Кн) / Kш     — «за 1 м²»
+     НС (по скану) = HC_unit_excel × S             — S #1
+     Нз = (НС × S × C) / 12                        — S #2
+  ------------------------------------------------- */
     const cRate =
       landTaxRate > 1
         ? landTaxRate / 100
@@ -931,20 +936,33 @@ const Welcome: FC = () => {
         ? 0.01
         : landTaxRate;
 
-    const Nz = (HC_per_m2 * areaLand * cRate) / 12;
-    const nsFull = HC_per_m2; // для вывода в таблицу
-    // cRate = 1 % → 0.01, демек /12 /100  →  /1200
+    const HC_unit_excel =
+      (landHC * kInflation * landHC2Coeff * landUseCoeff) / ksh;
+
+    const NS_excel = HC_unit_excel * areaLand; // «НС по скану»
+    const Nz = (NS_excel * areaLand * cRate) / 12; // плата за землю (в мес.)
+
+    // Для отображения процента
     const landTaxRateDisplay =
       landTaxRate <= 1 ? landTaxRate * 100 : landTaxRate;
 
-    const Apl = rent + Nz;
-    const totalNoVat = Apl + propertyTax;
+    /* -------- 5) Налог на имущество --------
+     propertyHC = C(база стены) × P × Кр × Ks × Кн
+     propertyTax = propertyHC × (ставка %) / 100 / 12
+  ------------------------------------------------- */
+    let propertyHC = 0;
+    let propertyTax = 0;
+    if (areaBuilding && wallBaseCost && propertyRate) {
+      propertyHC =
+        wallBaseCost * areaBuilding * kpRegional * ksZone * knFunctional;
+      propertyTax = (propertyHC * propertyRate) / 100 / 12;
+    }
 
-    const profitPct = num(form.profit) || 0;
-    const subtotal = totalNoVat + (totalNoVat * profitPct) / 100;
+    /* -------- 6) Сводные суммы -------- */
+    const Apl = rent + Nz; // аренда помещения + земля
+    const totalNoVat = Apl + propertyTax; // + налог на имущество
 
-    const ndsPct = num(form.nds);
-    const nspPct = num(form.nsp);
+    const subtotal = totalNoVat + (totalNoVat * profitPct) / 100; // + рентабельность
     const ndsValue = (subtotal * ndsPct) / 100;
     const nspValue = (subtotal * nspPct) / 100;
 
@@ -952,15 +970,16 @@ const Welcome: FC = () => {
     const denominator = areaObject || areaLand;
     const perSq = denominator ? grandTotal / denominator : 0;
 
+    /* -------- 7) Форматирование строк таблицы -------- */
     const fmt = (v: number, digits = 2) =>
       v
         ? `${v.toLocaleString("ru-RU", { maximumFractionDigits: digits })} сом`
         : "—";
+
     const fmtNum = (v: number, digits = 2) =>
       v.toLocaleString("ru-RU", { maximumFractionDigits: digits });
 
     const rows = [
-      /* ───── 1. А.пл. ───── */
       {
         label: "1. А.пл. = Баз.ст. × S × K1 × K2 × K3 × K4 + Нз",
         value: fmt(Apl),
@@ -981,33 +1000,30 @@ const Welcome: FC = () => {
         label: "K1 – коэффициент населённого пункта здания",
         value: fmtNum(k1),
       },
-      { label: "K2 – коэффициент тех. состояния помещения", value: fmtNum(k2) },
-      { label: "K3 – коэффициент тех. обустройства здания", value: fmtNum(k3) },
+      { label: "K2 – техническое состояние помещения", value: fmtNum(k2) },
+      { label: "K3 – техническое обустройство здания", value: fmtNum(k3) },
       {
         label: "K4 – отраслевой коэффициент использования помещения",
         value: fmtNum(k4),
       },
-      { label: "Нз. = (HC × S × C) / 12", value: fmt(Nz) },
+      { label: "Нз = (НС × S × C) / 12", value: fmt(Nz) },
       { label: "", value: "" },
 
       {
-        label: "Нз – плата за пользование земельным участком (налог)",
-        value: fmt(Nz),
+        label: "НС (по скану) = (БНС × Ki × Kз × Кн ÷ Kш) × S",
+        value: fmt(NS_excel),
       },
-      { label: `HC = БНС × Ki × Kз × Кн`, value: fmt(nsFull) },
       { label: "БНС – базовая ставка земельного налога", value: fmt(landHC) },
+      { label: "Ki – индекс инфляции", value: form.kInflation },
+      { label: "Kз – зональный коэффициент", value: form.landHC2 },
       {
-        label: "S – площадь земельного участка помещения",
+        label: "Кн – коэффициент функционального назначения имущества (земля)",
+        value: fmtNum(landUseCoeff),
+      },
+      { label: "Kш – делитель (из поля ввода)", value: fmtNum(ksh) },
+      {
+        label: "S – площадь земельного участка",
         value: fmtNum(areaLand) + " кв.м",
-      },
-      { label: "Ki – коэффициент инфляции", value: form.kInflation },
-      {
-        label: "Кн – коэффициент функционального назначения имущества",
-        value: fmtNum(landUseCoeff), // ← чоң сан (4,5…22,5)
-      },
-      {
-        label: "Kз – зональный коэффициент (эконо-план.)",
-        value: form.landHC2,
       },
       {
         label: "C – ставка земельного налога",
@@ -1015,33 +1031,36 @@ const Welcome: FC = () => {
       },
       { label: "", value: "" },
 
-      /* ───── 2. Налог на имущество ───── */
-      { label: "2. Налог на имущество:", value: fmt(propertyTax) },
+      { label: "2. Налог на имущество (в месяц)", value: fmt(propertyTax) },
       {
-        label:
-          "Налогооблагаемая стоимость имущества (здания) 0,8 % × HC × кв.м / 12 =",
-        value: fmt(propertyTax),
+        label: `Налогооблагаемая стоимость: C(база) × P × Кр × Ks × Кн = ${fmtNum(
+          propertyHC
+        )}`,
+        value: "",
       },
-      { label: `HC = C × P × Кр × Ks × Кн = ${fmtNum(propertyHC)}`, value: "" },
       {
         label: "C – ставка налога от налогооблагаемой стоимости объекта",
         value: fmtNum(propertyRate, 1) + " %",
       },
-      { label: "P – площадь объекта", value: fmtNum(areaBuilding) + " кв.м" },
-      { label: "Kш – делитель (из инпута)", value: fmtNum(landScale) },
-
-      { label: "Кр – региональный коэффициент", value: fmtNum(kpRegional) },
-      { label: "Ks – зональный коэффициент", value: fmtNum(ksZone) },
       {
-        label: "Кн – коэффициент функционального назначения имущества",
+        label: "P – площадь объекта (для налога на имущество)",
+        value: fmtNum(areaBuilding) + " кв.м",
+      },
+      { label: "Кр – региональный коэффициент", value: fmtNum(kpRegional) },
+      { label: "Ks – зональный (для Бишкека)", value: fmtNum(ksZone) },
+      {
+        label: "Кн – функциональный (для имущества)",
         value: fmtNum(knFunctional),
       },
       { label: "", value: "" },
 
-      /* ───── итоги ───── */
       {
-        label: "Итого минимальная месячная арендная плата:",
+        label: "Итого минимальная месячная арендная плата (без налогов):",
         value: fmt(totalNoVat),
+      },
+      {
+        label: `Рентабельность ${fmtNum(profitPct, 0)} %`,
+        value: fmt(subtotal - totalNoVat),
       },
       { label: `НДС ${fmtNum(ndsPct, 0)} %`, value: fmt(ndsValue) },
       { label: `НСП ${fmtNum(nspPct, 0)} %`, value: fmt(nspValue) },
@@ -1049,11 +1068,7 @@ const Welcome: FC = () => {
         label: "Итого минимальная месячная арендная плата с налогами:",
         value: fmt(grandTotal),
       },
-      {
-        label: "Итого месячная оплата с налогами за 1 кв. метр",
-        value: fmt(perSq),
-      },
-      { label: `HC = БНС × Ki × Kз × Кн`, value: fmt(nsFull) },
+      { label: "Итого в месяц за 1 кв.м", value: fmt(perSq) },
     ];
 
     const description =
@@ -1067,7 +1082,7 @@ const Welcome: FC = () => {
       ndsValue,
       nspValue,
       grandTotal,
-      perSq, // ← добавили сюда
+      perSq,
       finalTotal: grandTotal,
       rows,
       affiliate: form.affiliate,
@@ -1075,7 +1090,7 @@ const Welcome: FC = () => {
       total: 0,
     };
 
-    /* ---------- 2. анимируем кнопку ---------- */
+    /* -------- 8) Анимация кнопки (как у тебя) -------- */
     setIsSubmitting(true);
     setShowCheck(false);
     setProgressPct(0);
@@ -1093,7 +1108,7 @@ const Welcome: FC = () => {
     setShowCheck(true);
     await new Promise((r) => setTimeout(r, 450));
 
-    /* ---------- 3. вывод результата ---------- */
+    /* -------- 9) Вывод результата -------- */
     setResult(calc);
     setData(calc);
     setIsSubmitting(false);
