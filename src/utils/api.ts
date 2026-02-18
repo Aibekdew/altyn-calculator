@@ -4,7 +4,7 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://rent.kyrgyzaltyn.kg/api/";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -19,7 +19,7 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
     if (
-      error.response?.status === 401 &&
+      error.response?.status === 401 && 
       !originalRequest._retry &&
       localStorage.getItem("refresh")
     ) {
