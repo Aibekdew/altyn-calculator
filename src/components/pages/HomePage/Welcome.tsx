@@ -35,6 +35,121 @@ const num = (raw: string | number | undefined | null): number => {
 
   return parseFloat(s) || 0;
 };
+type WrapOption = { value: string; label: string; coeff?: number | string };
+
+function WrapSelect({
+  id,
+  name,
+  value,
+  options,
+  placeholder = "выберите из списка",
+  onValueChange,
+}: {
+  id: string;
+  name: string;
+  value: string;
+  options: WrapOption[];
+  placeholder?: string;
+  onValueChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  const selected = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const renderText = (o?: WrapOption) => {
+    if (!o) return placeholder;
+    return `${o.label}${o.coeff !== undefined ? ` – ${o.coeff}` : ""}`;
+  };
+
+  return (
+    <div ref={boxRef} className="relative">
+      <button
+        id={id}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((p) => !p)}
+        className={`${selectBase} text-left whitespace-normal break-words leading-snug pr-10`}
+      >
+        {renderText(selected)}
+      </button>
+
+      {/* стрелка как в твоих select */}
+      <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+        <svg
+          className="w-5 h-5 text-gray-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            role="listbox"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            className="absolute z-[9999] mt-2 w-full max-h-72 overflow-auto rounded-xl bg-white shadow-2xl ring-1 ring-black/10"
+          >
+            {options.map((o) => {
+              const active = o.value === value;
+              return (
+                <li key={o.value}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onValueChange(o.value);
+                      setOpen(false);
+                    }}
+                    className={
+                      "w-full text-left px-4 py-3 whitespace-normal break-words leading-snug " +
+                      (active ? "bg-blue-50" : "hover:bg-blue-50")
+                    }
+                  >
+                    {renderText(o)}
+                  </button>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+
+      {/* скрытое поле (если вдруг надо для форм/автофилла) */}
+      <input type="hidden" name={name} value={value} />
+    </div>
+  );
+}
 
 const toNum = (v: string) => parseFloat(v.replace(",", ".").trim()) || 0; // "" → 0
 
@@ -292,6 +407,7 @@ export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
 const KP_ITEMS: [string, number][] = [
   /* значения не меняли — просто оставили как есть */
   ["жилые здания и помещения", 1.0],
+    ["Коэффициент функционального назначения для земельного участка населенных пунктов и несельскохозяйственного назначения, по которому коэффициент не установлен настоящей статьей, принимается равным", 1.0],
   ["автозаправочные станции", 10.0],
   ["автостоянки, предприятия автосервиса", 4.5],
   [
@@ -765,11 +881,11 @@ const Welcome: FC = () => {
 
     // Дерево
     Дерево: [
-      { label: "До 5 лет", coeff: 10000 },
-      { label: "5-15 лет", coeff: 13000 },
-      { label: "15-30 лет", coeff: 12000 },
-      { label: "30-45 лет", coeff: 11000 },
-      { label: "более 45 лет", coeff: 10000 },
+      { label: "До 5 лет", coeff: 13000 },
+      { label: "5-15 лет", coeff: 12000 },
+      { label: "15-30 лет", coeff: 11000 },
+      { label: "30-45 лет", coeff: 10000 },
+      { label: "более 45 лет", coeff: 8000 },
     ],
 
     // Сборный или монолитный бетон и железобетон, бетонные блоки, пескоблок, пеноблок, пенобетон, стекло, сэндвич-панель
@@ -1631,20 +1747,16 @@ const Welcome: FC = () => {
                 >
                   Кн – коэффициент функционального назначения имущества
                 </label>
-                <select
-                  id="landUse"
-                  name="landUse"
-                  value={String(form.landUse)}
-                  onChange={handleChange}
-                  className={selectBase}
-                >
-                  <option value="">выберите из списка</option>
-                  {COMMERCIAL_USE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {`${o.label} – ${o.coeff}`}
-                    </option>
-                  ))}
-                </select>
+<WrapSelect
+  id="landUse"
+  name="landUse"
+  value={String(form.landUse)}
+  options={COMMERCIAL_USE_OPTIONS}
+  placeholder="выберите из списка"
+  onValueChange={(v) => setForm((p) => ({ ...p, landUse: v }))}
+/>
+
+
 
                 <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
                   <svg
