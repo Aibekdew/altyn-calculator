@@ -234,6 +234,7 @@ interface FormState {
   defC: string;
   defKp: string;
   defKn: string;
+  wallOption: string;
   wallMaterial: string; // выбранный материал
   wallServiceLife: string; // выбранный срок эксплуатации
   wallBaseCost: string;
@@ -397,7 +398,7 @@ export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
       value: `${num}_${idx}`, // уникальный ID сохранён
       label,
       coeff: Number(num),
-    }))
+    })),
   )
   .sort((a, b) => a.label.localeCompare(b.label, "ru")); // <- алфавит
 
@@ -503,6 +504,34 @@ const numericFields = [
   "profit",
   "defKz",
 ] as const;
+
+const requiredSelectFields = [
+  "affiliate",
+  "k1",
+  "k2",
+  "k3",
+  "k4",
+  "landUse",
+  "defC",
+  "defKp",
+  "defKn",
+  "wallOption",
+] as const;
+
+const selectErrorMessages: Record<string, string> = {
+  affiliate: "Выберите филиал / дочернее предприятие",
+  k1: "Выберите К1",
+  k2: "Выберите К2",
+  k3: "Выберите К3",
+  k4: "Выберите К4",
+  k1zone: "Выберите зону г. Бишкек",
+  landUse: "Выберите Кн",
+  defC: "Выберите ставку налога",
+  defKp: "Выберите региональный коэффициент",
+  defKn: "Выберите Кн",
+  wallOption: "Выберите материал и срок эксплуатации",
+};
+
 const initialForm: FormState = {
   k1: "",
   k2: "",
@@ -513,15 +542,15 @@ const initialForm: FormState = {
   areaLand: "",
   streetAccess: false,
   landHC: "",
-  landHC2: "1.2", // ← было ""  ➜  ставим "1" по умолчанию
+  landHC2: "",
+  defKz: "",
+  kInflation: "",
+  nds: "",
+  nsp: "",
   landTaxRate: "",
   areaBuilding: "",
-  defKz: "0",
   k1zone: "",
   landUse: "",
-  kInflation: "0",
-  nds: "0", // ← «по умолчанию 0 %»
-  nsp: "0",
   profit: "",
   affiliate: "",
   objectName: "",
@@ -529,6 +558,7 @@ const initialForm: FormState = {
   defC: "",
   defKp: "",
   defKn: "",
+  wallOption: "",
   wallMaterial: "",
   wallServiceLife: "",
   wallBaseCost: "",
@@ -567,7 +597,7 @@ const getBandsForRegion = (region: string) => {
     (b) =>
       NS_BY_REGION_POP[key]?.[
         b.value as keyof (typeof NS_BY_REGION_POP)[string]
-      ] !== undefined
+      ] !== undefined,
   );
 };
 
@@ -805,7 +835,7 @@ export const COMMERCIAL_USE_OPTIONS: KpOption[] = KP_ITEMS.map(
     label, // что видит пользователь
     value: label, // используем само название как стабильный id
     coeff, // числовое значение Кк
-  })
+  }),
 );
 const Welcome: FC = () => {
   const { setData } = usePrintData();
@@ -851,22 +881,47 @@ const Welcome: FC = () => {
   const validateField = (
     field: (typeof numericFields)[number],
     value: string,
-    silent = false
+    silent = false,
   ): boolean => {
     let msg = "";
-    if (value.trim() && isNaN(num(value))) msg = "Введите число"; // пусто = ок, считаем нулём
+
+    if (!value.trim()) {
+      msg = "Заполните поле";
+    } else if (isNaN(num(value))) {
+      msg = "Введите число";
+    }
+
     if (!silent) setErrors((p) => ({ ...p, [field]: msg }));
     return msg === "";
   };
-
   const validateForm = () => {
     const newErr: Record<string, string> = {};
+
     numericFields.forEach((f) => {
-      if (!validateField(f, String(form[f]), true)) newErr[f] = "Введите число";
+      const value = String(form[f] ?? "").trim();
+
+      if (!value) {
+        newErr[f] = "Заполните поле";
+      } else if (isNaN(num(value))) {
+        newErr[f] = "Введите число";
+      }
     });
-    if (!form.affiliate) newErr.affiliate = "Выберите филиал / компанию";
+
+    requiredSelectFields.forEach((f) => {
+      const value = String(form[f] ?? "").trim();
+
+      if (!value) {
+        newErr[f] = selectErrorMessages[f] || "Выберите значение";
+      }
+    });
+
+    if (form.k1 === "bishkek" && !form.k1zone) {
+      newErr.k1zone = "Выберите зону г. Бишкек";
+    }
+
     setErrors(newErr);
-    return !Object.keys(newErr).length; // только явные ошибки
+
+    return Object.keys(newErr).length === 0;
   };
 
   const WALL_LIFE_OPTIONS: Record<string, LifeOption[]> = {
@@ -926,59 +981,85 @@ const Welcome: FC = () => {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const target = e.target;
     const name = target.name;
 
-    // безопасно определяем «чекбокс это или нет»
     const newValue: string | boolean =
       target instanceof HTMLInputElement && target.type === "checkbox"
         ? target.checked
         : target.value;
-    // Если выбрали населённый пункт (k1) — подставляем макс. БНС
+
+    // Очищаем ошибку поля после изменения
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+
+    // Если выбрали населённый пункт K1 — подставляем БНС и сбрасываем зону Бишкек
     if (name === "k1" && typeof newValue === "string") {
-      // алиас колдонобуз: областьты курорттук зона сеткасына байлайбыз
       const key = REGION_KEY_ALIASES[newValue] ?? newValue;
       const regionBands = NS_BY_REGION_POP[key];
 
+      setErrors((prev) => ({
+        ...prev,
+        k1: "",
+        k1zone: "",
+        landHC: "",
+      }));
+
       if (regionBands) {
         const maxNs = Math.max(...Object.values(regionBands));
+
         setForm((prev) => ({
           ...prev,
           k1: newValue,
-          landHC: maxNs.toString(), // мисалы, Иссык-Көл үчүн 210 болуп түшөт
+          k1zone: "",
+          landHC: maxNs.toString(),
         }));
       } else {
-        setForm((prev) => ({ ...prev, k1: newValue }));
+        setForm((prev) => ({
+          ...prev,
+          k1: newValue,
+          k1zone: "",
+        }));
       }
+
       return;
     }
 
-    // Старая логика для wallOption
+    // Материал стен + срок эксплуатации
     if (name === "wallOption" && typeof newValue === "string") {
       const [material, life, cost] = newValue.split("|");
+
       setForm((prev) => ({
         ...prev,
         wallOption: newValue,
-        wallMaterial: material,
-        wallServiceLife: life,
-        wallBaseCost: cost,
+        wallMaterial: material || "",
+        wallServiceLife: life || "",
+        wallBaseCost: cost || "",
       }));
+
       return;
     }
 
-    // Для всех остальных полей — просто сохраняем значение
+    // Checkbox
     if (name === "streetAccess" && typeof newValue === "boolean") {
-      setForm((prev) => ({ ...prev, streetAccess: newValue }));
+      setForm((prev) => ({
+        ...prev,
+        streetAccess: newValue,
+      }));
+
       return;
     }
+
+    // Остальные поля
     setForm((prev) => ({
       ...prev,
       [name]: newValue,
     }));
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -989,16 +1070,16 @@ const Welcome: FC = () => {
     const areaBuilding = num(form.areaBuilding); // P (для налога на имущество)
 
     const landHC = num(form.landHC); // БНС
-    const landHC2Coeff = num(form.landHC2 || "1.2"); // Kз
-    const kzProperty = num(form.defKz || "0"); // Кз – зональный коэффициент (имущество)
+    const landHC2Coeff = num(form.landHC2);
+    const kzProperty = num(form.defKz);
 
     const kInflation = num(form.kInflation); // Ки
     const landTaxRate = num(form.landTaxRate); // C (ставка земли)
-    const ksh = Math.max(num(form.landScale || "0"), 1); // Kш — делитель (из инпута)
+    const ksh = num(form.landScale);
 
     const ndsPct = num(form.nds); // НДС, %
     const nspPct = num(form.nsp); // НСП, %
-    const profitPct = num(form.profit) || 0; // Рентабельность, %
+    const profitPct = num(form.profit);
 
     // Налог на имущество (вводимые)
     const propertyRate = num(form.defC); // C, % от налогооблагаемой стоимости
@@ -1015,18 +1096,17 @@ const Welcome: FC = () => {
     //     для остальных — coeff из K1_OPTIONS
     const k1 =
       form.k1 === "bishkek"
-        ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
-        : K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 1;
+        ? (BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ??
+          0)
+        : (K1_OPTIONS.find((o) => o.value === form.k1)?.coeff ?? 0);
 
-    // K2, K3
-    let k2 = num(form.k2 || "1");
-    const k3 = num(form.k3 || "1");
+    let k2 = num(form.k2);
+    const k3 = num(form.k3);
 
     // K4 (с возможной надбавкой +0.1 за «отдельный вход вдоль улицы»)
-    const k4Selected =
-      form.k4 ||
-      (K4_OPTIONS.find((o) => o.label.startsWith("Квартира"))?.value ?? "");
-    const k4Base = K4_OPTIONS.find((o) => o.value === k4Selected)?.coeff ?? 1;
+    const k4Selected = form.k4;
+
+    const k4Base = K4_OPTIONS.find((o) => o.value === k4Selected)?.coeff ?? 0;
     const k4 = form.streetAccess ? k4Base + 0.1 : k4Base;
 
     // Для «Кинотеатр» — по твоему правилу понижаем K2
@@ -1037,16 +1117,16 @@ const Welcome: FC = () => {
       k2 = 0.5;
     }
 
-    // Кн (земельное функциональное) из справочника COMMERCIAL_USE_OPTIONS
-    const landUseValue = form.landUse || "жилые здания и помещения";
+    const landUseValue = form.landUse;
     const landUseCoeff =
-      COMMERCIAL_USE_OPTIONS.find((o) => o.value === landUseValue)?.coeff ?? 1;
+      COMMERCIAL_USE_OPTIONS.find((o) => o.value === landUseValue)?.coeff ?? 0;
 
     // Ks — зональность Бишкека для налога на имущество (если надо)
     const ksZone =
       form.k1 === "bishkek"
-        ? BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ?? 1
-        : 1;
+        ? (BISHKEK_ZONE_OPTIONS.find((o) => o.value === form.k1zone)?.coeff ??
+          0)
+        : 0;
 
     /* -------- 3) Аренда помещения -------- */
     const rent = baseRate * areaObject * k1 * k2 * k3 * k4;
@@ -1060,8 +1140,8 @@ const Welcome: FC = () => {
       landTaxRate > 1
         ? landTaxRate / 100
         : landTaxRate === 1
-        ? 0.01
-        : landTaxRate;
+          ? 0.01
+          : landTaxRate;
 
     const HC_unit_excel =
       (landHC * kInflation * landHC2Coeff * landUseCoeff) / ksh;
@@ -1081,7 +1161,7 @@ const Welcome: FC = () => {
     let propertyTax = 0;
     if (areaBuilding && wallBaseCost && propertyRate) {
       // НС (имущество) = C(база стены) × P × Кр × Кз × Кн
-      const kzProperty = num(form.defKz || "0"); // ← ЖАҢЫ: Кз (имущество)
+      const kzProperty = num(form.defKz);
 
       propertyHC =
         wallBaseCost * areaBuilding * kpRegional * kzProperty * knFunctional;
@@ -1165,7 +1245,7 @@ const Welcome: FC = () => {
       { label: "2. Налог на имущество (в месяц)", value: fmt(propertyTax) },
       {
         label: `Налогооблагаемая стоимость: C(база) × P × Кр × Кз × Кн = ${fmtNum(
-          propertyHC
+          propertyHC,
         )}`,
         value: "",
       },
@@ -1258,7 +1338,10 @@ const Welcome: FC = () => {
     `${inputBase} ${
       errors[f] ? "border-red-500 focus:ring-red-400/60" : "border-transparent"
     }`;
-
+  const selectClass = (f: string) =>
+    `${selectBase} transition-colors duration-300 ${
+      errors[f] ? "border-red-500 focus:ring-red-400/60" : "border-transparent"
+    }`;
   let ai = 0;
   const nextAi = () => ai++;
 
@@ -1290,18 +1373,21 @@ const Welcome: FC = () => {
             <select
               id="affiliate"
               name="affiliate"
-              value={form.affiliate}
+              value={String(form.affiliate)}
               onChange={handleChange}
-              className={`${selectBase} transition-colors duration-300
-    ${errors.affiliate && "border-red-500 focus:ring-red-400/60"}`}
+              className={selectClass("affiliate")}
+              required
             >
-              <option value="">— выберите из списка —</option>
+              <option value="" disabled>
+                0 — выберите из списка
+              </option>
+
               <optgroup label="Управление">
                 <option value="Управление ОАО « Кыргызалтын»">
                   Управление ОАО « Кыргызалтын»
                 </option>
               </optgroup>
-              {/* ------ Филиалы ------ */}
+
               <optgroup label="Филиалы">
                 {AFFILIATE_BRANCHES.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -1310,7 +1396,6 @@ const Welcome: FC = () => {
                 ))}
               </optgroup>
 
-              {/* ------ Дочерние предприятия ------ */}
               <optgroup label="Дочерние предприятия">
                 {AFFILIATE_SUBSIDIARIES.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -1378,6 +1463,7 @@ const Welcome: FC = () => {
             variants={fadeInUp}
             custom={nextAi()}
             onSubmit={handleSubmit}
+            noValidate
             className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8"
           >
             <div className={glassPanel + " lg:h-full"}>
@@ -1414,7 +1500,6 @@ const Welcome: FC = () => {
                       custom={nextAi()}
                       className="relative"
                     >
-                      {" "}
                       <label
                         htmlFor={id}
                         className="block mb-1 text-[#0A2D8F] font-medium"
@@ -1426,9 +1511,12 @@ const Welcome: FC = () => {
                         name={id}
                         value={String(form[id])}
                         onChange={handleChange}
-                        className={selectBase}
+                        className={selectClass(id)}
+                        required
                       >
-                        <option value="">выберите из списка</option>
+                        <option value="" disabled>
+                          0 — выберите из списка
+                        </option>
                         {options.map((o) => {
                           // по-умолчанию: "label – value"
                           let text = `${o.label} – ${o.value}`;
@@ -1452,6 +1540,11 @@ const Welcome: FC = () => {
                           );
                         })}
                       </select>
+                      {errors[id] && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors[id]}
+                        </p>
+                      )}
                       <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
                         <svg
                           className="w-5 h-5 text-gray-500"
@@ -1489,16 +1582,23 @@ const Welcome: FC = () => {
                           name="k1zone"
                           value={form.k1zone}
                           onChange={handleChange}
-                          className={selectBase}
+                          className={selectClass("k1zone")}
+                          required={form.k1 === "bishkek"}
                         >
-                          <option value="">выберите зону</option>
+                          <option value="" disabled>
+                            0 — выберите зону
+                          </option>
                           {BISHKEK_ZONE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
                               {`${o.label}            - ${o.coeff}`}
                             </option>
                           ))}
                         </select>
-
+                        {errors.k1zone && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.k1zone}
+                          </p>
+                        )}
                         <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
                           <svg
                             className="w-5 h-5 text-gray-500"
@@ -1751,13 +1851,25 @@ const Welcome: FC = () => {
   id="landUse"
   name="landUse"
   value={String(form.landUse)}
-  options={COMMERCIAL_USE_OPTIONS}
-  placeholder="выберите из списка"
-  onValueChange={(v) => setForm((p) => ({ ...p, landUse: v }))}
+  placeholder="0 — выберите из списка"
+  options={COMMERCIAL_USE_OPTIONS.map((o) => ({
+    value: o.value,
+    label: o.label,
+    coeff: o.coeff,
+  }))}
+  onValueChange={(value) => {
+    handleChange({
+      target: {
+        name: "landUse",
+        value,
+      },
+    } as React.ChangeEvent<HTMLSelectElement>);
+  }}
 />
 
-
-
+{errors.landUse && (
+  <p className="text-red-500 text-sm mt-1">{errors.landUse}</p>
+)}
                 <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
                   <svg
                     className="w-5 h-5 text-gray-500"
@@ -1814,15 +1926,21 @@ const Welcome: FC = () => {
                   name="defC"
                   value={String(form.defC)}
                   onChange={handleChange}
-                  className={selectBase}
+                  className={selectClass("defC")}
+                  required
                 >
-                  <option value="">выберите из списка</option>
+                  <option value="" disabled>
+                    0 — выберите из списка
+                  </option>
                   {C_RATE_OPTIONS.map((opt) => (
                     <option key={opt.label} value={opt.coeff.toString()}>
                       {`${opt.label} – ${opt.coeff}%`}
                     </option>
                   ))}
                 </select>
+                {errors.defC && (
+                  <p className="text-red-500 text-sm mt-1">{errors.defC}</p>
+                )}
                 <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
                   <svg
                     className="w-5 h-5 text-gray-500"
@@ -1856,9 +1974,12 @@ const Welcome: FC = () => {
                   name="defKp"
                   value={form.defKp}
                   onChange={handleChange}
-                  className={selectBase}
+                  className={selectClass("defKp")}
+                  required
                 >
-                  <option value="">выберите из списка</option>
+                  <option value="" disabled>
+                    0 — выберите из списка
+                  </option>
                   {REGIONAL_KP_OPTIONS.map((group) => (
                     <optgroup key={group.region} label={group.region}>
                       {group.options.map((opt) => (
@@ -1869,6 +1990,9 @@ const Welcome: FC = () => {
                     </optgroup>
                   ))}
                 </select>
+                {errors.defKp && (
+                  <p className="text-red-500 text-sm mt-1">{errors.defKp}</p>
+                )}
                 <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
                   <svg
                     className="w-5 h-5 text-gray-500"
@@ -1923,15 +2047,21 @@ const Welcome: FC = () => {
                   name="defKn"
                   value={form.defKn}
                   onChange={handleChange}
-                  className={selectBase}
+                  className={selectClass("defKn")}
+                  required
                 >
-                  <option value="">выберите из списка</option>
+                  <option value="" disabled>
+                    0 — выберите из списка
+                  </option>
                   {KN_FUNCTIONAL_OPTIONS.map((o) => (
                     <option key={o.value} value={o.coeff.toString()}>
                       {`${o.label} – ${o.coeff}`}
                     </option>
                   ))}
                 </select>
+                {errors.defKn && (
+                  <p className="text-red-500 text-sm mt-1">{errors.defKn}</p>
+                )}
                 <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
                   <svg
                     className="w-5 h-5 text-gray-500"
@@ -1947,9 +2077,6 @@ const Welcome: FC = () => {
                     />
                   </svg>
                 </div>
-                {errors.defKn && (
-                  <p className="text-red-500 text-sm mt-1">{errors.defKn}</p>
-                )}
               </motion.div>
               {/* ——— Материал стен ——— */}
               {/* ——— Селект “Материал + срок + коэфф” ——— */}
@@ -1969,9 +2096,12 @@ const Welcome: FC = () => {
                   name="wallOption"
                   value={String(form.wallOption)}
                   onChange={handleChange}
-                  className={selectBase}
+                  className={selectClass("wallOption")}
+                  required
                 >
-                  <option value="">выберите из списка</option>
+                  <option value="" disabled>
+                    0 — выберите из списка
+                  </option>
                   {Object.entries(WALL_LIFE_OPTIONS).map(([mat, opts]) => (
                     <optgroup key={mat} label={mat}>
                       {opts.map((o) => (
@@ -1985,6 +2115,11 @@ const Welcome: FC = () => {
                     </optgroup>
                   ))}
                 </select>
+                {errors.wallOption && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.wallOption}
+                  </p>
+                )}
                 <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
                   <svg
                     className="w-5 h-5 text-gray-500"
