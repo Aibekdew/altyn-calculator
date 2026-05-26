@@ -1038,6 +1038,17 @@ const Welcome: FC = () => {
 
     // Если выбрали населённый пункт K1 — подставляем БНС и сбрасываем зону Бишкек
     if (name === "k1" && typeof newValue === "string") {
+      if (newValue === "0") {
+        setForm((prev) => ({
+          ...prev,
+          k1: "0",
+          k1zone: "",
+          landHC: "0",
+        }));
+
+        return;
+      }
+
       const key = REGION_KEY_ALIASES[newValue] ?? newValue;
       const regionBands = NS_BY_REGION_POP[key];
 
@@ -1068,8 +1079,19 @@ const Welcome: FC = () => {
       return;
     }
 
-    // Материал стен + срок эксплуатации
     if (name === "wallOption" && typeof newValue === "string") {
+      if (newValue === "0") {
+        setForm((prev) => ({
+          ...prev,
+          wallOption: "0",
+          wallMaterial: "",
+          wallServiceLife: "",
+          wallBaseCost: "0",
+        }));
+
+        return;
+      }
+
       const [material, life, cost] = newValue.split("|");
 
       setForm((prev) => ({
@@ -1082,7 +1104,6 @@ const Welcome: FC = () => {
 
       return;
     }
-
     // Checkbox
     if (name === "streetAccess" && typeof newValue === "boolean") {
       setForm((prev) => ({
@@ -1417,9 +1438,8 @@ const Welcome: FC = () => {
               className={selectClass("affiliate")}
             >
               <option value="" disabled>
-                0 — выберите из списка
+                выберите из списка
               </option>
-
               <optgroup label="Управление">
                 <option value="Управление ОАО « Кыргызалтын»">
                   Управление ОАО « Кыргызалтын»
@@ -1552,8 +1572,11 @@ const Welcome: FC = () => {
                         className={selectClass(id)}
                       >
                         <option value="" disabled>
-                          0 — выберите из списка
+                          выберите из списка
                         </option>
+
+                        <option value="0">0</option>
+
                         {options.map((o) => {
                           // по-умолчанию: "label – value"
                           let text = `${o.label} – ${o.value}`;
@@ -1622,8 +1645,10 @@ const Welcome: FC = () => {
                           className={selectClass("k1zone")}
                         >
                           <option value="" disabled>
-                            0 — выберите зону
+                            выберите зону
                           </option>
+
+                          <option value="0">0</option>
                           {BISHKEK_ZONE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
                               {`${o.label}            - ${o.coeff}`}
@@ -1887,12 +1912,19 @@ const Welcome: FC = () => {
                   id="landUse"
                   name="landUse"
                   value={String(form.landUse)}
-                  placeholder="0 — выберите из списка"
-                  options={COMMERCIAL_USE_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                    coeff: o.coeff,
-                  }))}
+                  placeholder="выберите из списка"
+                  options={[
+                    {
+                      value: "0",
+                      label: "0",
+                      coeff: 0,
+                    },
+                    ...COMMERCIAL_USE_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                      coeff: o.coeff,
+                    })),
+                  ]}
                   onValueChange={(value) => {
                     handleChange({
                       target: {
@@ -1950,8 +1982,11 @@ const Welcome: FC = () => {
                   className={selectClass("defC")}
                 >
                   <option value="" disabled>
-                    0 — выберите из списка
+                    выберите из списка
                   </option>
+
+                  <option value="0">0</option>
+
                   {C_RATE_OPTIONS.map((opt) => (
                     <option key={opt.label} value={opt.coeff.toString()}>
                       {`${opt.label} – ${opt.coeff}%`}
@@ -1994,8 +2029,15 @@ const Welcome: FC = () => {
                   id="defKp"
                   name="defKp"
                   value={String(form.defKp)}
-                  placeholder="0 — выберите из списка"
-                  options={REGIONAL_KP_FLAT_OPTIONS}
+                  placeholder="выберите из списка"
+                  options={[
+                    {
+                      value: "0",
+                      label: "0",
+                      coeff: 0,
+                    },
+                    ...REGIONAL_KP_FLAT_OPTIONS,
+                  ]}
                   onValueChange={(value) => {
                     setErrors((prev) => ({
                       ...prev,
@@ -2049,13 +2091,16 @@ const Welcome: FC = () => {
                 <select
                   id="defKn"
                   name="defKn"
-                  value={form.defKn}
+                  value={String(form.defKn)}
                   onChange={handleChange}
                   className={selectClass("defKn")}
                 >
                   <option value="" disabled>
-                    0 — выберите из списка
+                    выберите из списка
                   </option>
+
+                  <option value="0">0</option>
+
                   {KN_FUNCTIONAL_OPTIONS.map((o) => (
                     <option key={o.value} value={o.coeff.toString()}>
                       {`${o.label} – ${o.coeff}`}
@@ -2102,8 +2147,11 @@ const Welcome: FC = () => {
                   className={selectClass("wallOption")}
                 >
                   <option value="" disabled>
-                    0 — выберите из списка
+                    выберите из списка
                   </option>
+
+                  <option value="0">0</option>
+
                   {Object.entries(WALL_LIFE_OPTIONS).map(([mat, opts]) => (
                     <optgroup key={mat} label={mat}>
                       {opts.map((o) => (
