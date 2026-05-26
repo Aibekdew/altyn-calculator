@@ -35,8 +35,18 @@ const num = (raw: string | number | undefined | null): number => {
 
   return parseFloat(s) || 0;
 };
-type WrapOption = { value: string; label: string; coeff?: number | string };
-
+type WrapOption = {
+  value: string;
+  label: string;
+  coeff?: number | string;
+  group?: string;
+};
+const makeSafeValue = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^\p{L}\p{N}]+/gu, "_")
+    .replace(/^_+|_+$/g, "");
 function WrapSelect({
   id,
   name,
@@ -121,24 +131,37 @@ function WrapSelect({
             exit={{ opacity: 0, y: 6 }}
             className="absolute z-[9999] mt-2 w-full max-h-72 overflow-auto rounded-xl bg-white shadow-2xl ring-1 ring-black/10"
           >
-            {options.map((o) => {
+            {options.map((o, index) => {
               const active = o.value === value;
+              const prevGroup = options[index - 1]?.group;
+              const showGroup = o.group && o.group !== prevGroup;
+
               return (
-                <li key={o.value}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onValueChange(o.value);
-                      setOpen(false);
-                    }}
-                    className={
-                      "w-full text-left px-4 py-3 whitespace-normal break-words leading-snug " +
-                      (active ? "bg-blue-50" : "hover:bg-blue-50")
-                    }
-                  >
-                    {renderText(o)}
-                  </button>
-                </li>
+                <React.Fragment key={o.value}>
+                  {showGroup && (
+                    <li className="px-4 pt-3 pb-1 text-sm font-bold text-gray-900 bg-white">
+                      {o.group}
+                    </li>
+                  )}
+
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onValueChange(o.value);
+                        setOpen(false);
+                      }}
+                      className={
+                        "w-full text-left px-6 py-2.5 whitespace-normal break-words leading-snug transition " +
+                        (active
+                          ? "bg-blue-100 text-blue-900 font-medium"
+                          : "hover:bg-blue-50 text-gray-900")
+                      }
+                    >
+                      {renderText(o)}
+                    </button>
+                  </li>
+                </React.Fragment>
               );
             })}
           </motion.ul>
@@ -408,7 +431,10 @@ export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
 const KP_ITEMS: [string, number][] = [
   /* значения не меняли — просто оставили как есть */
   ["жилые здания и помещения", 1.0],
-    ["Коэффициент функционального назначения для земельного участка населенных пунктов и несельскохозяйственного назначения, по которому коэффициент не установлен настоящей статьей, принимается равным", 1.0],
+  [
+    "Коэффициент функционального назначения для земельного участка населенных пунктов и несельскохозяйственного назначения, по которому коэффициент не установлен настоящей статьей, принимается равным",
+    1.0,
+  ],
   ["автозаправочные станции", 10.0],
   ["автостоянки, предприятия автосервиса", 4.5],
   [
@@ -802,7 +828,19 @@ const REGIONAL_KP_OPTIONS: RegionalGroup[] = [
     options: [{ label: "город Бишкек", coeff: 1.0 }],
   },
 ];
-
+const REGIONAL_KP_FLAT_OPTIONS: WrapOption[] = REGIONAL_KP_OPTIONS.flatMap(
+  (group) =>
+    group.options.map((option) => ({
+      value: `${makeSafeValue(group.region)}__${makeSafeValue(option.label)}__${option.coeff}`,
+      label: option.label,
+      coeff: option.coeff,
+      group: group.region,
+    })),
+);
+const getRegionalKpCoeff = (value: string): number => {
+  const item = REGIONAL_KP_FLAT_OPTIONS.find((o) => o.value === value);
+  return item ? num(item.coeff) : 0;
+};
 /* ───── добавьте рядом с K-справочниками ───── */
 const BISHKEK_ZONE_OPTIONS: ValCoeff[] = [
   {
@@ -900,9 +938,10 @@ const Welcome: FC = () => {
     numericFields.forEach((f) => {
       const value = String(form[f] ?? "").trim();
 
-      if (!value) {
+      // Пустое поле — ошибка. Но "0" теперь НЕ ошибка.
+      if (value === "") {
         newErr[f] = "Заполните поле";
-      } else if (isNaN(num(value))) {
+      } else if (!Number.isFinite(num(value))) {
         newErr[f] = "Введите число";
       }
     });
@@ -910,12 +949,13 @@ const Welcome: FC = () => {
     requiredSelectFields.forEach((f) => {
       const value = String(form[f] ?? "").trim();
 
-      if (!value) {
+      // Только пустая строка ошибка. Значение "0" допустимо.
+      if (value === "") {
         newErr[f] = selectErrorMessages[f] || "Выберите значение";
       }
     });
 
-    if (form.k1 === "bishkek" && !form.k1zone) {
+    if (form.k1 === "bishkek" && String(form.k1zone ?? "").trim() === "") {
       newErr.k1zone = "Выберите зону г. Бишкек";
     }
 
@@ -923,7 +963,6 @@ const Welcome: FC = () => {
 
     return Object.keys(newErr).length === 0;
   };
-
   const WALL_LIFE_OPTIONS: Record<string, LifeOption[]> = {
     // Кирпич
     Кирпич: [
@@ -1083,7 +1122,7 @@ const Welcome: FC = () => {
 
     // Налог на имущество (вводимые)
     const propertyRate = num(form.defC); // C, % от налогооблагаемой стоимости
-    const kpRegional = num(form.defKp); // Кр
+    const kpRegional = getRegionalKpCoeff(String(form.defKp)); // Кр
     const knFunctional = num(form.defKn); // Кн
     const wallBaseCost = num(form.wallBaseCost); // C (база стены)
 
@@ -1376,7 +1415,6 @@ const Welcome: FC = () => {
               value={String(form.affiliate)}
               onChange={handleChange}
               className={selectClass("affiliate")}
-              required
             >
               <option value="" disabled>
                 0 — выберите из списка
@@ -1512,7 +1550,6 @@ const Welcome: FC = () => {
                         value={String(form[id])}
                         onChange={handleChange}
                         className={selectClass(id)}
-                        required
                       >
                         <option value="" disabled>
                           0 — выберите из списка
@@ -1583,7 +1620,6 @@ const Welcome: FC = () => {
                           value={form.k1zone}
                           onChange={handleChange}
                           className={selectClass("k1zone")}
-                          required={form.k1 === "bishkek"}
                         >
                           <option value="" disabled>
                             0 — выберите зону
@@ -1847,29 +1883,29 @@ const Welcome: FC = () => {
                 >
                   Кн – коэффициент функционального назначения имущества
                 </label>
-<WrapSelect
-  id="landUse"
-  name="landUse"
-  value={String(form.landUse)}
-  placeholder="0 — выберите из списка"
-  options={COMMERCIAL_USE_OPTIONS.map((o) => ({
-    value: o.value,
-    label: o.label,
-    coeff: o.coeff,
-  }))}
-  onValueChange={(value) => {
-    handleChange({
-      target: {
-        name: "landUse",
-        value,
-      },
-    } as React.ChangeEvent<HTMLSelectElement>);
-  }}
-/>
+                <WrapSelect
+                  id="landUse"
+                  name="landUse"
+                  value={String(form.landUse)}
+                  placeholder="0 — выберите из списка"
+                  options={COMMERCIAL_USE_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                    coeff: o.coeff,
+                  }))}
+                  onValueChange={(value) => {
+                    handleChange({
+                      target: {
+                        name: "landUse",
+                        value,
+                      },
+                    } as React.ChangeEvent<HTMLSelectElement>);
+                  }}
+                />
 
-{errors.landUse && (
-  <p className="text-red-500 text-sm mt-1">{errors.landUse}</p>
-)}
+                {errors.landUse && (
+                  <p className="text-red-500 text-sm mt-1">{errors.landUse}</p>
+                )}
               </motion.div>
               {/* C (ставка налога) */}
               {/* === Ваш существующий блок с input для C (landTaxRate) === */}
@@ -1912,7 +1948,6 @@ const Welcome: FC = () => {
                   value={String(form.defC)}
                   onChange={handleChange}
                   className={selectClass("defC")}
-                  required
                 >
                   <option value="" disabled>
                     0 — выберите из списка
@@ -1944,9 +1979,9 @@ const Welcome: FC = () => {
               </motion.div>
 
               <motion.div
+                className="relative"
                 variants={fadeInUp}
                 custom={nextAi()}
-                className="relative"
               >
                 <label
                   htmlFor="defKp"
@@ -1954,45 +1989,29 @@ const Welcome: FC = () => {
                 >
                   Кр – региональный коэффициент
                 </label>
-                <select
+
+                <WrapSelect
                   id="defKp"
                   name="defKp"
-                  value={form.defKp}
-                  onChange={handleChange}
-                  className={selectClass("defKp")}
-                  required
-                >
-                  <option value="" disabled>
-                    0 — выберите из списка
-                  </option>
-                  {REGIONAL_KP_OPTIONS.map((group) => (
-                    <optgroup key={group.region} label={group.region}>
-                      {group.options.map((opt) => (
-                        <option key={opt.label} value={opt.coeff.toString()}>
-                          {`${opt.label} – ${opt.coeff}`}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                  value={String(form.defKp)}
+                  placeholder="0 — выберите из списка"
+                  options={REGIONAL_KP_FLAT_OPTIONS}
+                  onValueChange={(value) => {
+                    setErrors((prev) => ({
+                      ...prev,
+                      defKp: "",
+                    }));
+
+                    setForm((prev) => ({
+                      ...prev,
+                      defKp: value,
+                    }));
+                  }}
+                />
+
                 {errors.defKp && (
                   <p className="text-red-500 text-sm mt-1">{errors.defKp}</p>
                 )}
-                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                  <svg
-                    className="w-5 h-5 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
               </motion.div>
               {/* Кз – зональный коэффициент */}
               <motion.div variants={fadeInUp} custom={nextAi()}>
@@ -2033,7 +2052,6 @@ const Welcome: FC = () => {
                   value={form.defKn}
                   onChange={handleChange}
                   className={selectClass("defKn")}
-                  required
                 >
                   <option value="" disabled>
                     0 — выберите из списка
@@ -2082,7 +2100,6 @@ const Welcome: FC = () => {
                   value={String(form.wallOption)}
                   onChange={handleChange}
                   className={selectClass("wallOption")}
-                  required
                 >
                   <option value="" disabled>
                     0 — выберите из списка
