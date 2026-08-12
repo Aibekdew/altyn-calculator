@@ -414,6 +414,13 @@ export const KN_FUNCTIONAL_OPTIONS: ValCoeff[] = [
   },
 ];
 
+const getKnFunctionalCoeff = (value: string): number => {
+  if (value === "0") return 0;
+  return (
+    KN_FUNCTIONAL_OPTIONS.find((option) => option.value === value)?.coeff ?? 0
+  );
+};
+
 /* плоский массив + алфавитная сортировка --------------------------- */
 export const K4_OPTIONS: ValCoeff[] = Object.entries(K4_GROUPS)
   .flatMap(([num, labels]) =>
@@ -718,26 +725,50 @@ interface RegionalGroup {
 }
 // 1. Объявляем список ставок налога (ст. 379 НК КР)
 interface RateOption {
+  value: string;
   label: string;
   coeff: number;
 }
 
 const C_RATE_OPTIONS: RateOption[] = [
-  { label: "Жилые здания и помещения", coeff: 0.35 },
-  { label: "Нежилые здания, сооружения и помещения", coeff: 0.8 },
-  { label: "Земельные участки, кроме сельскохозяйственных угодий", coeff: 1 },
-  { label: "Сельскохозяйственные угодья", coeff: 0.01 },
   {
+    value: "residential_property",
+    label: "Жилые здания и помещения",
+    coeff: 0.35,
+  },
+  {
+    value: "non_residential_property",
+    label: "Нежилые здания, сооружения и помещения",
+    coeff: 0.8,
+  },
+  {
+    value: "non_agricultural_land",
+    label: "Земельные участки, кроме сельскохозяйственных угодий",
+    coeff: 1,
+  },
+  {
+    value: "agricultural_land",
+    label: "Сельскохозяйственные угодья",
+    coeff: 0.01,
+  },
+  {
+    value: "vehicle_with_engine_displacement",
     label:
       "Транспортные средства с двигателем внутреннего сгорания (установленный объем)",
     coeff: 1,
   },
   {
+    value: "vehicle_without_engine_displacement",
     label:
       "Транспортные средства без установленного объема или без двигателя внутреннего сгорания",
     coeff: 0.5,
   },
 ];
+
+const getPropertyRateCoeff = (value: string): number => {
+  if (value === "0") return 0;
+  return C_RATE_OPTIONS.find((option) => option.value === value)?.coeff ?? 0;
+};
 
 const REGIONAL_KP_OPTIONS: RegionalGroup[] = [
   {
@@ -1142,9 +1173,9 @@ const Welcome: FC = () => {
     const profitPct = num(form.profit);
 
     // Налог на имущество (вводимые)
-    const propertyRate = num(form.defC); // C, % от налогооблагаемой стоимости
+    const propertyRate = getPropertyRateCoeff(String(form.defC)); // C, % от налогооблагаемой стоимости
     const kpRegional = getRegionalKpCoeff(String(form.defKp)); // Кр
-    const knFunctional = num(form.defKn); // Кн
+    const knFunctional = getKnFunctionalCoeff(String(form.defKn)); // Кн
     const wallBaseCost = num(form.wallBaseCost); // C (база стены)
 
     /* -------- 2) Коэфф. локации / зональности -------- */
@@ -1988,7 +2019,7 @@ const Welcome: FC = () => {
                   <option value="0">0</option>
 
                   {C_RATE_OPTIONS.map((opt) => (
-                    <option key={opt.label} value={opt.coeff.toString()}>
+                    <option key={opt.value} value={opt.value}>
                       {`${opt.label} – ${opt.coeff}%`}
                     </option>
                   ))}
@@ -2102,7 +2133,7 @@ const Welcome: FC = () => {
                   <option value="0">0</option>
 
                   {KN_FUNCTIONAL_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.coeff.toString()}>
+                    <option key={o.value} value={o.value}>
                       {`${o.label} – ${o.coeff}`}
                     </option>
                   ))}
